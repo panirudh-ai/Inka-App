@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: inka-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: GOOGLE_DRIVE_ENABLED
+        value: "true"
+      - key: GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: GOOGLE_DRIVE_PRIVATE_KEY
+        sync: false
+      - key: GOOGLE_DRIVE_FOLDER_ID
+        sync: false
+      - key: GOOGLE_DRIVE_PUBLIC_LINKS
+        value: "false"
+
+  - type: web
+    name: inka-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false

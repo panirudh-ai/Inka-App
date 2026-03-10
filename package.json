@@ -1,0 +1,7 @@
+{
+  "name": "inka-enterprise-v1",
+  "private": true,
+  "scripts": {
+    "bootstrap": "powershell -ExecutionPolicy Bypass -File ./scripts/bootstrap.ps1"
+  }
+}

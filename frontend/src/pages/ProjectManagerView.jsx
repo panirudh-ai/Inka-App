@@ -1,0 +1,1195 @@
+import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Button,
+  Chip,
+  Collapse,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  Grid2 as Grid,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Select,
+  Snackbar,
+  Stack,
+  Tab,
+  Tabs,
+  TextField,
+  Typography,
+  Zoom,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AddIcon from "@mui/icons-material/Add";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import HierarchySelector from "../components/HierarchySelector";
+import { api } from "../api/client";
+
+export default function ProjectManagerView({ masterData, role = "project_manager" }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [tab, setTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [projects, setProjects] = useState([]);
+  const [openProjectRowId, setOpenProjectRowId] = useState("");
+  const [engineers, setEngineers] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [clientMasters, setClientMasters] = useState([]);
+  const [clientMasterForm, setClientMasterForm] = useState({
+    name: "",
+    location: "",
+    primaryContactName: "",
+    primaryContactPhone: "",
+    primaryContactEmail: "",
+    notes: "",
+    isActive: true,
+  });
+  const [editClientMaster, setEditClientMaster] = useState({});
+  const [projectId, setProjectId] = useState("");
+  const [openCreateProject, setOpenCreateProject] = useState(false);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    clientId: "",
+    clientName: "",
+    location: "",
+    driveLink: "",
+    startDate: "",
+    engineerIds: [],
+    clientUserIds: [],
+    categorySequenceMode: false,
+  });
+  const [dashboard, setDashboard] = useState(null);
+  const [crs, setCrs] = useState([]);
+  const [deliveries, setDeliveries] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [driveFiles, setDriveFiles] = useState([]);
+  const [driveUploadFile, setDriveUploadFile] = useState(null);
+  const [driveUploading, setDriveUploading] = useState(false);
+  const [projectClientIds, setProjectClientIds] = useState([]);
+
+  const [openAdd, setOpenAdd] = useState(false);
+  const [selector, setSelector] = useState({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+  const [qty, setQty] = useState(1);
+  const [rate, setRate] = useState(0);
+
+  const [crSelector, setCrSelector] = useState({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+  const [crChangeType, setCrChangeType] = useState("add");
+  const [crQty, setCrQty] = useState(1);
+  const [crFloorLabel, setCrFloorLabel] = useState("Unassigned");
+  const [crLocationDescription, setCrLocationDescription] = useState("");
+
+  const [deliveryItemId, setDeliveryItemId] = useState("");
+  const [deliveryQty, setDeliveryQty] = useState(1);
+  const [deliveryNotes, setDeliveryNotes] = useState("");
+  const [deliveryPhotoFile, setDeliveryPhotoFile] = useState(null);
+  const [deliverySelector, setDeliverySelector] = useState({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+  const [crDiff, setCrDiff] = useState({ diff: [], summary: { totalDeltaQty: 0 } });
+  const [floorLabel, setFloorLabel] = useState("Unassigned");
+  const [locationDescription, setLocationDescription] = useState("");
+  const [projectContacts, setProjectContacts] = useState([]);
+  const [visitNotes, setVisitNotes] = useState("");
+  const [visits, setVisits] = useState([]);
+  const [visitSummary, setVisitSummary] = useState({ totals: {}, byEngineer: [], byMonth: [] });
+
+  const [toast, setToast] = useState({ open: false, severity: "success", text: "" });
+  const [excelImportFile, setExcelImportFile] = useState(null);
+  const [excelImporting, setExcelImporting] = useState(false);
+  const [excelImportResult, setExcelImportResult] = useState(null);
+  const canEditScope = role === "admin" || role === "project_manager";
+
+  const openCr = useMemo(() => crs.find((c) => c.status === "draft" || c.status === "pending"), [crs]);
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const row of dashboard?.bom || []) {
+      const floor = row.floor_label || "Unassigned";
+      if (!map.has(floor)) map.set(floor, []);
+      map.get(floor).push(row);
+    }
+    return Array.from(map.entries());
+  }, [dashboard]);
+
+  const selectedModel = useMemo(
+    () => masterData.items.find((i) => i.id === selector.itemId),
+    [masterData.items, selector.itemId]
+  );
+  const selectedDeliveryItemId = deliverySelector.itemId || deliveryItemId;
+  const selectedDeliveryBom = useMemo(
+    () => (dashboard?.bom || []).find((b) => b.item_id === selectedDeliveryItemId),
+    [dashboard?.bom, selectedDeliveryItemId]
+  );
+
+  async function fetchProjects() {
+    const { data } = await api.get("/projects");
+    setProjects(data);
+    if (data.length && !projectId) setProjectId(data[0].id);
+  }
+
+  async function fetchEngineers() {
+    const [engRes, clientRes] = await Promise.all([
+      api.get("/reference/users?role=engineer"),
+      api.get("/reference/users?role=client"),
+    ]);
+    setEngineers(engRes.data);
+    setClients(clientRes.data);
+  }
+
+  async function fetchClientMasters() {
+    const { data } = await api.get("/clients");
+    setClientMasters(Array.isArray(data) ? data : data.data || []);
+  }
+
+  async function loadProject(pid) {
+    if (!pid) return;
+    setLoading(true);
+    try {
+      const [dashboardRes, crRes, deliveryRes, activityRes] = await Promise.all([
+        api.get(`/projects/${pid}/dashboard`),
+        api.get(`/projects/${pid}/change-requests`),
+        api.get(`/projects/${pid}/deliveries`),
+        api.get(`/projects/${pid}/activity`),
+      ]);
+      setDashboard(dashboardRes.data);
+      setCrs(crRes.data);
+      setDeliveries(deliveryRes.data);
+      setActivity(activityRes.data);
+      const visitsRes = await api.get(`/projects/${pid}/visits`, { params: { paginated: true, page: 1, limit: 20 } }).catch(() => ({ data: { data: [] } }));
+      setVisits(Array.isArray(visitsRes.data) ? visitsRes.data : visitsRes.data.data || []);
+      const visitSummaryRes = await api.get(`/projects/${pid}/visits/summary`).catch(() => ({ data: { totals: {}, byEngineer: [], byMonth: [] } }));
+      setVisitSummary(visitSummaryRes.data || { totals: {}, byEngineer: [], byMonth: [] });
+      const driveRes = await api.get(`/projects/${pid}/drive-files`).catch(() => ({ data: [] }));
+      setDriveFiles(driveRes.data || []);
+      setProjectContacts(dashboardRes.data?.contacts || []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchProjects().catch(() => {});
+    fetchEngineers().catch(() => {});
+    fetchClientMasters().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadProject(projectId).catch(() => {});
+  }, [projectId]);
+
+  useEffect(() => {
+    if (selectedModel) setRate(Number(selectedModel.default_rate || 0));
+  }, [selectedModel]);
+
+  useEffect(() => {
+    setProjectClientIds(dashboard?.project?.assigned_client_ids || []);
+  }, [dashboard?.project?.id]);
+
+  async function addBomItem() {
+    if (!openCr?.id || !selector.itemId) return;
+    await api.post(`/change-requests/${openCr.id}/items`, {
+      itemId: selector.itemId,
+      changeType: "add",
+      oldQuantity: null,
+      newQuantity: Number(qty),
+      floorLabel: floorLabel || "Unassigned",
+      locationDescription: locationDescription || "",
+    });
+    setOpenAdd(false);
+    setSelector({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+    setQty(1);
+    setRate(0);
+    setFloorLabel("Unassigned");
+    setLocationDescription("");
+    setToast({ open: true, severity: "success", text: "Added to CR diff" });
+    await loadProject(projectId);
+  }
+
+  async function createCr() {
+    if (!projectId) return;
+    await api.post(`/projects/${projectId}/change-requests`);
+    setToast({ open: true, severity: "success", text: "Change request created" });
+    await loadProject(projectId);
+  }
+
+  async function addCrItem() {
+    if (!openCr?.id || !crSelector.itemId) return;
+    const current = dashboard?.bom?.find((x) => x.item_id === crSelector.itemId);
+    const payload = {
+      itemId: crSelector.itemId,
+      changeType: crChangeType,
+      oldQuantity: current ? Number(current.quantity) : null,
+      newQuantity: crChangeType === "delete" ? null : Number(crQty),
+      floorLabel: crFloorLabel || "Unassigned",
+      locationDescription: crLocationDescription || "",
+    };
+    await api.post(`/change-requests/${openCr.id}/items`, payload);
+    setToast({ open: true, severity: "success", text: "CR delta added" });
+    await loadProject(projectId);
+  }
+
+  useEffect(() => {
+    if (!openCr?.id) {
+      setCrDiff({ diff: [], summary: { totalDeltaQty: 0 } });
+      return;
+    }
+    api
+      .get(`/change-requests/${openCr.id}/diff`)
+      .then((res) => setCrDiff(res.data))
+      .catch(() => setCrDiff({ diff: [], summary: { totalDeltaQty: 0 } }));
+  }, [openCr?.id, dashboard?.bom?.length]);
+
+  async function submitCr() {
+    if (!openCr?.id) return;
+    await api.post(`/change-requests/${openCr.id}/submit`);
+    setToast({ open: true, severity: "success", text: "CR submitted" });
+    await loadProject(projectId);
+  }
+
+  async function approveCr() {
+    if (!openCr?.id) return;
+    await api.post(`/change-requests/${openCr.id}/approve`);
+    setToast({ open: true, severity: "success", text: "CR approved" });
+    await loadProject(projectId);
+  }
+
+  async function rejectCr() {
+    if (!openCr?.id) return;
+    await api.post(`/change-requests/${openCr.id}/reject`);
+    setToast({ open: true, severity: "success", text: "CR rejected" });
+    await loadProject(projectId);
+  }
+
+  async function logDelivery() {
+    const itemId = deliverySelector.itemId || deliveryItemId;
+    if (!projectId || !itemId) return;
+    let photoUrl;
+    if (deliveryPhotoFile) {
+      const fd = new FormData();
+      fd.append("photo", deliveryPhotoFile);
+      const uploaded = await api.post("/uploads/photo", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      photoUrl = uploaded.data.photoUrl;
+    }
+    await api.post(`/projects/${projectId}/deliveries`, {
+      itemId,
+      quantity: Number(deliveryQty),
+      notes: deliveryNotes,
+      photoUrl,
+    });
+    setToast({ open: true, severity: "success", text: "Delivery logged" });
+    setDeliveryItemId("");
+    setDeliverySelector({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+    setDeliveryQty(1);
+    setDeliveryNotes("");
+    setDeliveryPhotoFile(null);
+    await loadProject(projectId);
+  }
+
+  async function createProject() {
+    await api.post("/projects", {
+      ...newProject,
+      clientId: newProject.clientId || undefined,
+      engineerIds: newProject.engineerIds,
+      clientUserIds: newProject.clientUserIds,
+      categorySequenceMode: !!newProject.categorySequenceMode,
+    });
+    setOpenCreateProject(false);
+    setNewProject({
+      name: "",
+      clientId: "",
+      clientName: "",
+      location: "",
+      driveLink: "",
+      startDate: "",
+      engineerIds: [],
+      clientUserIds: [],
+      categorySequenceMode: false,
+    });
+    setToast({ open: true, severity: "success", text: "Project created" });
+    await fetchProjects();
+  }
+
+  async function saveProjectClientMapping() {
+    if (!projectId) return;
+    await api.patch(`/projects/${projectId}`, { clientUserIds: projectClientIds });
+    setToast({ open: true, severity: "success", text: "Client mapping updated" });
+    await loadProject(projectId);
+  }
+
+  async function uploadDriveFile() {
+    if (!projectId || !driveUploadFile) return;
+    setDriveUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", driveUploadFile);
+      fd.append("projectId", projectId);
+      await api.post("/uploads/drive", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setDriveUploadFile(null);
+      setToast({ open: true, severity: "success", text: "File uploaded to Google Drive" });
+      await loadProject(projectId);
+    } catch (e) {
+      setToast({
+        open: true,
+        severity: "error",
+        text: e?.response?.data?.error || "Drive upload failed",
+      });
+    } finally {
+      setDriveUploading(false);
+    }
+  }
+
+  async function saveContacts() {
+    if (!projectId) return;
+    await api.put(`/projects/${projectId}/contacts`, {
+      contacts: projectContacts.map((c) => ({
+        roleName: c.roleName || c.role_name || "",
+        contactName: c.contactName || c.contact_name || "",
+        phone: c.phone || "",
+        email: c.email || "",
+        notes: c.notes || "",
+      })),
+    });
+    setToast({ open: true, severity: "success", text: "Contacts updated" });
+    await loadProject(projectId);
+  }
+
+  async function logVisit() {
+    if (!projectId) return;
+    await api.post(`/projects/${projectId}/visits`, { notes: visitNotes || "" });
+    setVisitNotes("");
+    setToast({ open: true, severity: "success", text: "Site visit logged" });
+    await loadProject(projectId);
+  }
+
+  async function createClientMaster() {
+    await api.post("/clients", clientMasterForm);
+    setClientMasterForm({
+      name: "",
+      location: "",
+      primaryContactName: "",
+      primaryContactPhone: "",
+      primaryContactEmail: "",
+      notes: "",
+      isActive: true,
+    });
+    setToast({ open: true, severity: "success", text: "Client created" });
+    await fetchClientMasters();
+  }
+
+  async function saveClientMaster(clientId) {
+    await api.patch(`/clients/${clientId}`, editClientMaster[clientId] || {});
+    setEditClientMaster((prev) => ({ ...prev, [clientId]: undefined }));
+    setToast({ open: true, severity: "success", text: "Client updated" });
+    await fetchClientMasters();
+  }
+
+  async function deleteClientMaster(clientId) {
+    await api.delete(`/clients/${clientId}`);
+    setToast({ open: true, severity: "success", text: "Client deleted" });
+    await fetchClientMasters();
+  }
+
+  async function importExcel() {
+    if (!excelImportFile) return;
+    setExcelImporting(true);
+    setExcelImportResult(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", excelImportFile);
+      const res = await api.post("/uploads/excel-import", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setExcelImportResult(res.data);
+      setToast({ open: true, severity: "success", text: `Excel imported: ${res.data.projectsImported} projects, ${res.data.itemsCreated} items created` });
+      setExcelImportFile(null);
+      await fetchProjects();
+      await fetchClientMasters();
+    } catch (e) {
+      setToast({ open: true, severity: "error", text: e?.response?.data?.error || "Excel import failed" });
+    } finally {
+      setExcelImporting(false);
+    }
+  }
+
+  return (
+    <Box>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ md: "center" }}>
+          <Typography variant="h6">Project List</Typography>
+          <Button variant="contained" onClick={() => setOpenCreateProject(true)}>Create Project</Button>
+        </Stack>
+        {isMobile ? (
+          <Stack spacing={1.1} sx={{ mt: 1.2 }}>
+            {projects.map((p) => (
+              <Paper
+                key={p.id}
+                onClick={() => setProjectId(p.id)}
+                sx={{
+                  p: 1.2,
+                  cursor: "pointer",
+                  bgcolor: projectId === p.id ? "action.selected" : "background.paper",
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>{p.name}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {p.client_name} | {p.status} | Open CR: {p.has_open_cr ? "Yes" : "No"}
+                </Typography>
+                <Typography variant="caption" display="block" color="text.secondary">
+                  {p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <TableContainer sx={{ mt: 1, overflowX: "auto" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Project</TableCell>
+                  <TableCell>Client</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Open CR</TableCell>
+                  <TableCell>Visits</TableCell>
+                  <TableCell>Last Activity</TableCell>
+                  <TableCell>View</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {projects.map((p) => (
+                  <Fragment key={p.id}>
+                    <TableRow
+                      hover
+                      onClick={() => {
+                        setProjectId(p.id);
+                        setOpenProjectRowId((prev) => (prev === p.id ? "" : p.id));
+                      }}
+                      sx={{ cursor: "pointer", bgcolor: projectId === p.id ? "action.selected" : "transparent" }}
+                    >
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell>{p.client_name}</TableCell>
+                      <TableCell>{p.status}</TableCell>
+                      <TableCell>{p.has_open_cr ? "Yes" : "No"}</TableCell>
+                      <TableCell>{Number(p.visit_count || 0)}</TableCell>
+                      <TableCell>{p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProjectId(p.id);
+                            setOpenProjectRowId((prev) => (prev === p.id ? "" : p.id));
+                          }}
+                        >
+                          {openProjectRowId === p.id ? "Close" : "Open"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={7} sx={{ p: 0, borderBottom: openProjectRowId === p.id ? undefined : 0 }}>
+                        <Collapse in={openProjectRowId === p.id} timeout="auto" unmountOnExit>
+                          <Box sx={{ p: 1.3, bgcolor: "background.default" }}>
+                            <Grid container spacing={1}>
+                              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Project</Typography><Typography variant="body2">{p.name}</Typography></Grid>
+                              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Client</Typography><Typography variant="body2">{p.client_name}</Typography></Grid>
+                              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Location</Typography><Typography variant="body2">{dashboard?.project?.id === p.id ? dashboard.project.location : p.location}</Typography></Grid>
+                              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Status</Typography><Typography variant="body2">{p.status}</Typography></Grid>
+                            </Grid>
+                            <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+                              <Chip size="small" label={`Visits: ${Number(p.visit_count || 0)}`} color="info" />
+                              <Chip size="small" label={`Open CR: ${p.has_open_cr ? "Yes" : "No"}`} color={p.has_open_cr ? "warning" : "success"} />
+                              {dashboard?.project?.id === p.id ? (
+                                <>
+                                  <Chip size="small" label={`Scope: INR ${Number(dashboard.summary?.total_scope_value || 0).toLocaleString()}`} color="primary" />
+                                  <Chip size="small" label={`Delivered: INR ${Number(dashboard.summary?.total_delivered_value || 0).toLocaleString()}`} color="success" />
+                                  <Chip size="small" label={`Balance: INR ${Number(dashboard.summary?.total_balance_value || 0).toLocaleString()}`} color="warning" />
+                                </>
+                              ) : null}
+                            </Stack>
+                            <Button sx={{ mt: 1 }} size="small" variant="outlined" onClick={() => setProjectId(p.id)}>
+                              Open In Dashboard
+                            </Button>
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6">Client Master</Typography>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }}>
+          <TextField size="small" label="Name" value={clientMasterForm.name} onChange={(e) => setClientMasterForm((p) => ({ ...p, name: e.target.value }))} />
+          <TextField size="small" label="Location" value={clientMasterForm.location} onChange={(e) => setClientMasterForm((p) => ({ ...p, location: e.target.value }))} />
+          <TextField size="small" label="Primary Contact" value={clientMasterForm.primaryContactName} onChange={(e) => setClientMasterForm((p) => ({ ...p, primaryContactName: e.target.value }))} />
+          <TextField size="small" label="Phone" value={clientMasterForm.primaryContactPhone} onChange={(e) => setClientMasterForm((p) => ({ ...p, primaryContactPhone: e.target.value }))} />
+          <TextField size="small" label="Email" value={clientMasterForm.primaryContactEmail} onChange={(e) => setClientMasterForm((p) => ({ ...p, primaryContactEmail: e.target.value }))} />
+          <Button variant="contained" onClick={() => createClientMaster().catch(() => setToast({ open: true, severity: "error", text: "Create client failed" }))}>Add</Button>
+        </Stack>
+        <TableContainer sx={{ mt: 1, overflowX: "auto" }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Location</TableCell>
+                <TableCell>Contact</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Projects</TableCell>
+                <TableCell>Active</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {clientMasters.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell>
+                    <TextField size="small" value={editClientMaster[c.id]?.name ?? c.name} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), name: e.target.value } }))} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" value={editClientMaster[c.id]?.location ?? c.location ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), location: e.target.value } }))} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" value={editClientMaster[c.id]?.primaryContactName ?? c.primary_contact_name ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactName: e.target.value } }))} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" value={editClientMaster[c.id]?.primaryContactPhone ?? c.primary_contact_phone ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactPhone: e.target.value } }))} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" value={editClientMaster[c.id]?.primaryContactEmail ?? c.primary_contact_email ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactEmail: e.target.value } }))} />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption">{Number(c.project_count || 0)}</Typography>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      {(c.associated_projects || []).slice(0, 2).join(", ")}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      size="small"
+                      value={(editClientMaster[c.id]?.isActive ?? c.is_active) ? "active" : "inactive"}
+                      onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), isActive: e.target.value === "active" } }))}
+                    >
+                      <MenuItem value="active">Active</MenuItem>
+                      <MenuItem value="inactive">Inactive</MenuItem>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <Button size="small" onClick={() => saveClientMaster(c.id).catch(() => setToast({ open: true, severity: "error", text: "Save client failed" }))}>Save</Button>
+                      <Button size="small" color="error" onClick={() => deleteClientMaster(c.id).catch(() => setToast({ open: true, severity: "error", text: "Delete client failed" }))}>Delete</Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6">Excel Import</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 1 }}>
+          Import projects, clients, and master data from Excel. File should have &quot;ClientProjects List&quot; sheet with project names, and project sheets with Brand/Product/Model columns.
+        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button variant="outlined" component="label" size="small">
+            {excelImportFile ? `Selected: ${excelImportFile.name}` : "Select Excel File"}
+            <input
+              hidden
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => setExcelImportFile(e.target.files?.[0] || null)}
+            />
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            disabled={!excelImportFile || excelImporting}
+            onClick={() => importExcel().catch(() => setToast({ open: true, severity: "error", text: "Import failed" }))}
+          >
+            {excelImporting ? "Importing..." : "Import Excel"}
+          </Button>
+        </Stack>
+        {excelImportResult && (
+          <Paper sx={{ p: 1.5, mt: 1, bgcolor: "action.hover" }}>
+            <Typography variant="subtitle2">Import Results:</Typography>
+            <Typography variant="caption" display="block">
+              Projects: {excelImportResult.projectsImported} | Clients: {excelImportResult.clientsCreated} | 
+              Brands: {excelImportResult.brandsCreated} | Product Types: {excelImportResult.productTypesCreated} | 
+              Items: {excelImportResult.itemsCreated} | BOM Items: {excelImportResult.bomItemsCreated}
+            </Typography>
+            {excelImportResult.errors?.length > 0 && (
+              <Typography variant="caption" color="error" display="block" sx={{ mt: 0.5 }}>
+                Errors: {excelImportResult.errors.length}
+              </Typography>
+            )}
+          </Paper>
+        )}
+      </Paper>
+
+      <Paper sx={{ p: 2.2, mb: 2 }}>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }} justifyContent="space-between">
+          <Typography variant="h6">Project Dashboard</Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} sx={{ width: { xs: "100%", md: "auto" } }}>
+            <FormControl size="small" sx={{ minWidth: { sm: 260 }, width: { xs: "100%", sm: "auto" } }}>
+              <InputLabel>Project</InputLabel>
+              <Select label="Project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+                {projects.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="outlined"
+              sx={{ width: { xs: "100%", sm: "auto" } }}
+              disabled={!projectId}
+              onClick={async () => {
+                if (!projectId) return;
+                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `inka_report_${projectId}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Download Report
+            </Button>
+          </Stack>
+        </Stack>
+
+        <Stack direction="row" spacing={1} sx={{ mt: 1.2 }} flexWrap="wrap" useFlexGap>
+          <Chip label={`Open CR: ${openCr ? "Yes" : "No"}`} color={openCr ? "warning" : "success"} />
+          <Chip label={`Total BOM Value: INR ${Number(dashboard?.summary?.total_scope_value || 0).toLocaleString()}`} color="primary" variant="outlined" />
+          <Chip label={`Delivered Value: INR ${Number(dashboard?.summary?.total_delivered_value || 0).toLocaleString()}`} color="warning" variant="outlined" />
+          <Chip label={`Balance: INR ${Number(dashboard?.summary?.total_balance_value || 0).toLocaleString()}`} color="secondary" variant="outlined" />
+          <Chip label={`Visits: ${Number(dashboard?.summary?.visit_count || 0)}`} color="info" variant="outlined" />
+        </Stack>
+        {dashboard?.project ? (
+          <Paper sx={{ mt: 1.4, p: 1.4, bgcolor: "background.paper" }}>
+            <Grid container spacing={1}>
+              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Project</Typography><Typography variant="body2">{dashboard.project.name}</Typography></Grid>
+              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Client</Typography><Typography variant="body2">{dashboard.project.client_name}</Typography></Grid>
+              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Location</Typography><Typography variant="body2">{dashboard.project.location}</Typography></Grid>
+              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Status</Typography><Typography variant="body2">{dashboard.project.status}</Typography></Grid>
+            </Grid>
+            {dashboard.project.drive_link ? (
+              <Button
+                sx={{ mt: 1 }}
+                size="small"
+                variant="outlined"
+                onClick={() => window.open(dashboard.project.drive_link, "_blank", "noopener,noreferrer")}
+              >
+                Open Drive Link
+              </Button>
+            ) : null}
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }} alignItems={{ md: "center" }}>
+              <Button variant="outlined" component="label" size="small">
+                {driveUploadFile ? `Selected: ${driveUploadFile.name}` : "Select File For Drive"}
+                <input hidden type="file" onChange={(e) => setDriveUploadFile(e.target.files?.[0] || null)} />
+              </Button>
+              <Button size="small" variant="contained" disabled={!driveUploadFile || driveUploading} onClick={uploadDriveFile}>
+                {driveUploading ? "Uploading..." : "Upload To Google Drive"}
+              </Button>
+            </Stack>
+            {driveFiles.length ? (
+              <Stack spacing={0.5} sx={{ mt: 1 }}>
+                <Typography variant="caption" color="text.secondary">Drive Files</Typography>
+                {driveFiles.slice(0, 8).map((f) => (
+                  <Button
+                    key={f.id}
+                    size="small"
+                    variant="text"
+                    sx={{ justifyContent: "flex-start" }}
+                    onClick={() => window.open(f.webViewLink || f.webContentLink, "_blank", "noopener,noreferrer")}
+                  >
+                    {f.name}
+                  </Button>
+                ))}
+              </Stack>
+            ) : null}
+            {canEditScope ? (
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1.1 }} alignItems={{ md: "center" }}>
+                <FormControl size="small" sx={{ minWidth: 300 }}>
+                  <InputLabel>Mapped Clients</InputLabel>
+                  <Select
+                    multiple
+                    label="Mapped Clients"
+                    value={projectClientIds}
+                    onChange={(e) => setProjectClientIds(e.target.value)}
+                  >
+                    {clients.map((u) => (
+                      <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button variant="outlined" onClick={saveProjectClientMapping}>Save Client Mapping</Button>
+              </Stack>
+            ) : null}
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="caption" color="text.secondary">Project Contacts</Typography>
+            <Stack spacing={0.8} sx={{ mt: 0.8 }}>
+              {projectContacts.map((c, idx) => (
+                <Stack key={`contact-${idx}`} direction={{ xs: "column", md: "row" }} spacing={1}>
+                  <TextField size="small" label="Role" value={c.roleName || c.role_name || ""} onChange={(e) => setProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, roleName: e.target.value } : x))} />
+                  <TextField size="small" label="Name" value={c.contactName || c.contact_name || ""} onChange={(e) => setProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, contactName: e.target.value } : x))} />
+                  <TextField size="small" label="Phone" value={c.phone || ""} onChange={(e) => setProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, phone: e.target.value } : x))} />
+                  <TextField size="small" label="Email" value={c.email || ""} onChange={(e) => setProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, email: e.target.value } : x))} />
+                  <Button color="error" onClick={() => setProjectContacts((prev) => prev.filter((_, i) => i !== idx))}>Remove</Button>
+                </Stack>
+              ))}
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                <Button size="small" variant="outlined" onClick={() => setProjectContacts((prev) => [...prev, { roleName: "Civil Engineer", contactName: "", phone: "", email: "", notes: "" }])}>Add Contact</Button>
+                <Button size="small" variant="contained" onClick={saveContacts}>Save Contacts</Button>
+              </Stack>
+            </Stack>
+            <Divider sx={{ my: 1 }} />
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
+              <TextField size="small" label="Visit Notes" value={visitNotes} onChange={(e) => setVisitNotes(e.target.value)} fullWidth />
+              <Button variant="contained" onClick={logVisit}>Log Site Visit</Button>
+            </Stack>
+            <Stack spacing={0.4} sx={{ mt: 0.8 }}>
+              {visits.slice(0, 5).map((v) => (
+                <Typography key={v.id} variant="caption" color="text.secondary">
+                  {new Date(v.created_at).toLocaleString()} | {v.engineer_name || "Engineer"} | {v.notes || "-"}
+                </Typography>
+              ))}
+            </Stack>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="caption" color="text.secondary">Recent Activity</Typography>
+            <Stack spacing={0.6} sx={{ mt: 0.5 }}>
+              {activity.slice(0, 4).map((a) => (
+                <Typography key={a.id} variant="caption">
+                  {a.action_type} | {new Date(a.created_at).toLocaleString()}
+                </Typography>
+              ))}
+            </Stack>
+          </Paper>
+        ) : null}
+      </Paper>
+
+      <Paper sx={{ p: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable">
+          <Tab label="BOM" />
+          <Tab label="Change Requests" />
+          <Tab label="Deliveries" />
+          <Tab label="Visits Analytics" />
+          <Tab label="Activity Feed" />
+        </Tabs>
+      </Paper>
+
+      {loading ? <CircularProgress sx={{ mt: 2 }} /> : null}
+
+      {tab === 0 && (
+        <Zoom in timeout={350}>
+          <Box sx={{ mt: 2 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" sx={{ mb: 1.5 }}>
+              <Typography variant="h6">Structured BOM</Typography>
+              <Button startIcon={<AddIcon />} variant="contained" disabled>
+                Add Item via CR
+              </Button>
+            </Stack>
+            {grouped.map(([floor, rows]) => (
+              <Accordion key={floor} sx={{ mb: 1 }} defaultExpanded>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography sx={{ fontWeight: 600 }}>Floor: {floor}</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={1}>
+                    {rows.map((r) => (
+                      <Grid size={{ xs: 12, md: 6 }} key={r.id}>
+                        <Paper sx={{ p: 1.5, border: `1px solid ${theme.palette.divider}` }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>{r.brand_name} {r.model_number}</Typography>
+                          <Typography variant="caption" color="text.secondary">{r.product_type_name}</Typography>
+                          <Typography variant="caption" display="block" color="text.secondary">Location: {r.location_description || "-"}</Typography>
+                          <Divider sx={{ my: 1 }} />
+                          <Stack direction="row" spacing={1}>
+                            <Chip label={`Approved ${r.quantity}`} size="small" color="primary" />
+                            <Chip label={`Delivered ${r.delivered_quantity}`} size="small" color="success" />
+                            <Chip label={`Balance ${Number(r.quantity) - Number(r.delivered_quantity)}`} size="small" color="warning" />
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+          </Box>
+        </Zoom>
+      )}
+
+      {tab === 1 && (
+        <Paper sx={{ mt: 2, p: 2 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }} sx={{ mb: 1.5 }}>
+            <Typography variant="h6">Single Change Request Governance</Typography>
+            {!openCr ? (
+              <Button variant="contained" startIcon={<CompareArrowsIcon />} onClick={createCr} disabled={!projectId || !canEditScope}>Create Change Request</Button>
+            ) : (
+              <Chip label={`CR ${openCr.id.slice(0, 8)} | ${openCr.status.toUpperCase()}`} color="warning" />
+            )}
+          </Stack>
+
+          {openCr && openCr.status !== "pending" && canEditScope ? (
+            <Stack spacing={1.5}>
+              <Button variant="contained" onClick={() => setOpenAdd(true)} startIcon={<AddIcon />}>
+                Add Item (CR)
+              </Button>
+              <HierarchySelector
+                categories={masterData.categories}
+                productTypes={masterData.productTypes}
+                brands={masterData.brands}
+                items={masterData.items}
+                value={crSelector}
+                onChange={(change) => setCrSelector((prev) => ({ ...prev, ...change }))}
+              />
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.2}>
+                <FormControl fullWidth>
+                  <InputLabel>Change Type</InputLabel>
+                  <Select value={crChangeType} label="Change Type" onChange={(e) => setCrChangeType(e.target.value)}>
+                    <MenuItem value="add">Add</MenuItem>
+                    <MenuItem value="modify">Modify Quantity</MenuItem>
+                    <MenuItem value="delete">Delete</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField type="number" label="New Quantity" value={crQty} onChange={(e) => setCrQty(Number(e.target.value || 0))} disabled={crChangeType === "delete"} fullWidth />
+                <TextField label="Floor" value={crFloorLabel} onChange={(e) => setCrFloorLabel(e.target.value)} fullWidth />
+                <TextField label="Location Description" value={crLocationDescription} onChange={(e) => setCrLocationDescription(e.target.value)} fullWidth />
+                <Button variant="contained" onClick={addCrItem}>Add Delta</Button>
+                <Button variant="outlined" onClick={submitCr}>Submit CR</Button>
+              </Stack>
+            </Stack>
+          ) : null}
+
+          {openCr && openCr.status === "pending" && (role === "project_manager" || role === "admin") ? (
+            <Stack direction="row" spacing={1.2} sx={{ mt: 1.2 }}>
+              <Button variant="contained" color="success" onClick={approveCr}>Approve CR</Button>
+              <Button variant="outlined" color="error" onClick={rejectCr}>Reject CR</Button>
+            </Stack>
+          ) : null}
+
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12, md: 7 }}>
+              <Typography variant="body2">CR changes are delta-based and applied only on approval.</Typography>
+            </Grid>
+            <Grid size={{ xs: 12, md: 5 }}>
+              <Paper sx={{ p: 1.5, bgcolor: "action.hover" }}>
+                <Typography variant="subtitle2">Live Diff Panel</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Total Scope Qty Delta: {crDiff.summary?.totalDeltaQty ?? 0}
+                </Typography>
+                <Table size="small" sx={{ mt: 1 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Model</TableCell>
+                      <TableCell>Type</TableCell>
+                      <TableCell>Floor</TableCell>
+                      <TableCell align="right">Before</TableCell>
+                      <TableCell align="right">After</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(crDiff.diff || []).map((d) => (
+                      <TableRow key={`${d.itemId}-${d.changeType}`}>
+                        <TableCell>{d.modelNumber}</TableCell>
+                        <TableCell>{d.changeType}</TableCell>
+                        <TableCell>{d.floorLabel || "Unassigned"}</TableCell>
+                        <TableCell align="right">{d.beforeQty}</TableCell>
+                        <TableCell align="right">{d.afterQty}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+
+      {tab === 2 && (
+        <Paper sx={{ mt: 2, p: 2 }}>
+          <Typography variant="h6">Site Deliveries</Typography>
+          <Grid container spacing={1.2} sx={{ mt: 1.2 }}>
+            <Grid size={{ xs: 12 }}>
+              <HierarchySelector
+                categories={masterData.categories}
+                productTypes={masterData.productTypes}
+                brands={masterData.brands}
+                items={masterData.items.filter((x) => (dashboard?.bom || []).some((b) => b.item_id === x.id))}
+                value={deliverySelector}
+                onChange={(change) => setDeliverySelector((prev) => ({ ...prev, ...change }))}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 2 }}>
+              <TextField type="number" label="Delivered Qty" value={deliveryQty} onChange={(e) => setDeliveryQty(Number(e.target.value || 0))} fullWidth />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Notes" value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} fullWidth />
+            </Grid>
+            <Grid size={{ xs: 6, md: 2 }}>
+              <Button fullWidth variant="outlined" component="label">
+                {deliveryPhotoFile ? "Photo Selected" : "Upload Photo"}
+                <input hidden type="file" accept="image/*" onChange={(e) => setDeliveryPhotoFile(e.target.files?.[0] || null)} />
+              </Button>
+            </Grid>
+            <Grid size={{ xs: 6, md: 2 }}>
+              <Button fullWidth variant="contained" onClick={logDelivery}>Log</Button>
+            </Grid>
+          </Grid>
+          {selectedDeliveryBom ? (
+            <Stack direction="row" spacing={1} sx={{ mt: 1.2 }}>
+              <Chip label={`Approved ${selectedDeliveryBom.quantity}`} size="small" />
+              <Chip label={`Previously Delivered ${selectedDeliveryBom.delivered_quantity}`} size="small" color="success" />
+              <Chip label={`Balance ${Number(selectedDeliveryBom.quantity) - Number(selectedDeliveryBom.delivered_quantity)}`} size="small" color="warning" />
+            </Stack>
+          ) : null}
+
+          <Stack spacing={1} sx={{ mt: 2 }}>
+            {deliveries.slice(0, 8).map((d) => (
+            <Paper key={d.id} sx={{ p: 1.2, border: `1px solid ${theme.palette.divider}` }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{d.full_name}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Qty {d.quantity} | {new Date(d.created_at).toLocaleString()} | {d.engineer_name || "Unknown"}
+                </Typography>
+                <Typography variant="caption" display="block" color="text.secondary">
+                  Notes: {d.notes || "-"} | Photo: {d.photo_url || "-"}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
+        </Paper>
+      )}
+
+      {tab === 3 && (
+        <Paper sx={{ mt: 2, p: 2 }}>
+          <Typography variant="h6">Site Visit Analytics</Typography>
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+            <Chip label={`Total Visits: ${Number(visitSummary?.totals?.total_visits || 0)}`} color="primary" variant="outlined" />
+            <Chip label={`Engineers Visited: ${Number(visitSummary?.totals?.engineer_count || 0)}`} color="info" variant="outlined" />
+            <Chip label={`First Visit: ${visitSummary?.totals?.first_visit_date || "-"}`} variant="outlined" />
+            <Chip label={`Last Visit: ${visitSummary?.totals?.last_visit_date || "-"}`} variant="outlined" />
+          </Stack>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                <Typography variant="subtitle2">Engineer-wise Visits</Typography>
+                <Table size="small" sx={{ mt: 0.8 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Engineer</TableCell>
+                      <TableCell align="right">Visit Count</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(visitSummary?.byEngineer || []).map((r) => (
+                      <TableRow key={r.engineer_id || r.engineer_name}>
+                        <TableCell>{r.engineer_name}</TableCell>
+                        <TableCell align="right">{r.visit_count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                <Typography variant="subtitle2">Month-wise Visits</Typography>
+                <Table size="small" sx={{ mt: 0.8 }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Month</TableCell>
+                      <TableCell align="right">Visit Count</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(visitSummary?.byMonth || []).map((r) => (
+                      <TableRow key={r.month_key}>
+                        <TableCell>{r.month_key}</TableCell>
+                        <TableCell align="right">{r.visit_count}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+
+      {tab === 4 && (
+        <Paper sx={{ mt: 2, p: 2 }}>
+          <Typography variant="h6">Immutable Activity Feed</Typography>
+          <Stack spacing={1} sx={{ mt: 1.2 }}>
+            {activity.slice(0, 20).map((a) => (
+                <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
+                  </Typography>
+                  <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0, color: "text.secondary" }}>
+                    {JSON.stringify(a.metadata_json || {}, null, 2)}
+                  </Typography>
+                </Paper>
+              ))}
+            </Stack>
+        </Paper>
+      )}
+
+      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} fullWidth maxWidth="md">
+        <DialogTitle>Add BOM Item</DialogTitle>
+        <DialogContent>
+          <HierarchySelector
+            categories={masterData.categories}
+            productTypes={masterData.productTypes}
+            brands={masterData.brands}
+            items={masterData.items}
+            value={selector}
+            onChange={(change) => setSelector((prev) => ({ ...prev, ...change }))}
+          />
+          <Grid container spacing={1.2} sx={{ mt: 0.6 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField type="number" label="Quantity" fullWidth value={qty} onChange={(e) => setQty(Number(e.target.value || 0))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField type="number" label="Rate" fullWidth value={rate} onChange={(e) => setRate(Number(e.target.value || 0))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField label="Unit" fullWidth value={selectedModel?.unit_of_measure || "-"} disabled />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField label="Floor (GF / FF / etc)" fullWidth value={floorLabel} onChange={(e) => setFloorLabel(e.target.value)} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <TextField label="Location Description" fullWidth value={locationDescription} onChange={(e) => setLocationDescription(e.target.value)} />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenAdd(false)}>Cancel</Button>
+          <Button variant="contained" onClick={addBomItem}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openCreateProject} onClose={() => setOpenCreateProject(false)} fullWidth maxWidth="md">
+        <DialogTitle>Create Project</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={1.2} sx={{ mt: 0.2 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Project Name" fullWidth value={newProject.name} onChange={(e) => setNewProject((p) => ({ ...p, name: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth>
+                <InputLabel>Client Master (Optional)</InputLabel>
+                <Select
+                  label="Client Master (Optional)"
+                  value={newProject.clientId}
+                  onChange={(e) => {
+                    const selected = clientMasters.find((c) => c.id === e.target.value);
+                    setNewProject((p) => ({
+                      ...p,
+                      clientId: e.target.value,
+                      clientName: selected?.name || p.clientName,
+                      location: selected?.location || p.location,
+                    }));
+                  }}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {clientMasters.filter((c) => c.is_active).map((c) => (
+                    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Client Name" fullWidth value={newProject.clientName} onChange={(e) => setNewProject((p) => ({ ...p, clientName: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Location" fullWidth value={newProject.location} onChange={(e) => setNewProject((p) => ({ ...p, location: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Drive Link (Optional)" fullWidth value={newProject.driveLink} onChange={(e) => setNewProject((p) => ({ ...p, driveLink: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField type="date" label="Start Date" fullWidth InputLabelProps={{ shrink: true }} value={newProject.startDate} onChange={(e) => setNewProject((p) => ({ ...p, startDate: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <FormControl fullWidth>
+                <InputLabel>Assigned Engineers</InputLabel>
+                <Select
+                  multiple
+                  label="Assigned Engineers"
+                  value={newProject.engineerIds}
+                  onChange={(e) => setNewProject((p) => ({ ...p, engineerIds: e.target.value }))}
+                >
+                  {engineers.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <FormControl fullWidth>
+                <InputLabel>Assigned Clients</InputLabel>
+                <Select
+                  multiple
+                  label="Assigned Clients"
+                  value={newProject.clientUserIds}
+                  onChange={(e) => setNewProject((p) => ({ ...p, clientUserIds: e.target.value }))}
+                >
+                  {clients.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <FormControl fullWidth>
+                <InputLabel>Category Sequence Mode</InputLabel>
+                <Select
+                  label="Category Sequence Mode"
+                  value={newProject.categorySequenceMode ? "yes" : "no"}
+                  onChange={(e) => setNewProject((p) => ({ ...p, categorySequenceMode: e.target.value === "yes" }))}
+                >
+                  <MenuItem value="no">Disabled</MenuItem>
+                  <MenuItem value="yes">Enabled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCreateProject(false)}>Cancel</Button>
+          <Button variant="contained" onClick={createProject}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast((p) => ({ ...p, open: false }))}>
+        <Alert severity={toast.severity}>{toast.text}</Alert>
+      </Snackbar>
+    </Box>
+  );
+}

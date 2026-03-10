@@ -1,0 +1,31 @@
+{
+  "name": "inka-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "db:schema": "node scripts/run-sql.js src/db/schema.sql",
+    "db:seed": "node scripts/run-sql.js src/db/seed.sql",
+    "db:bootstrap": "npm run db:schema && npm run db:seed",
+    "db:clean:excel": "node scripts/clean-for-excel.js admin@inka.local"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^144.0.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.15.1",
+    "pg": "^8.13.1",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}
