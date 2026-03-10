@@ -3,13 +3,19 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "build": "echo 'No build step required for ESM backend'",
     "db:schema": "node scripts/run-sql.js src/db/schema.sql",
     "db:seed": "node scripts/run-sql.js src/db/seed.sql",
-    "db:bootstrap": "npm run db:schema && npm run db:seed",
-    "db:clean:excel": "node scripts/clean-for-excel.js admin@inka.local"
+    "db:setup": "npm run db:schema && npm run db:seed",
+    "db:bootstrap": "npm run db:setup",
+    "db:clean:excel": "node scripts/clean-for-excel.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
