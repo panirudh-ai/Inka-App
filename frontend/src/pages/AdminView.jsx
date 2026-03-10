@@ -6,10 +6,13 @@ import {
   Chip,
   Collapse,
   Divider,
+  FormControl,
   FormControlLabel,
   Grid2 as Grid,
+  InputLabel,
   MenuItem,
   Paper,
+  Select,
   Stack,
   Switch,
   Tab,
@@ -42,6 +45,8 @@ export default function AdminView() {
   const [brands, setBrands] = useState([]);
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
+  const [engineers, setEngineers] = useState([]);
+  const [clientUsers, setClientUsers] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedProjectDashboard, setSelectedProjectDashboard] = useState(null);
@@ -110,12 +115,15 @@ export default function AdminView() {
     clientId: "",
     clientName: "",
     location: "",
+    driveLink: "",
     startDate: new Date().toISOString().slice(0, 10),
+    engineerIds: [],
+    clientUserIds: [],
     categorySequenceMode: false,
   });
 
   async function loadAll() {
-    const [p, c, pt, b, i, u, a, cl] = await Promise.all([
+    const [p, c, pt, b, i, u, a, cl, eng, cliUsers] = await Promise.all([
       api.get("/projects", { params: { paginated: true, page: projectPage, limit: PAGE_SIZE } }),
       api.get("/admin/categories"),
       api.get("/admin/product-types"),
@@ -124,6 +132,8 @@ export default function AdminView() {
       api.get("/admin/users", { params: { paginated: true, page: userPage, limit: PAGE_SIZE } }),
       api.get("/admin/activity/recent"),
       api.get("/clients", { params: { paginated: true, page: clientPage, limit: PAGE_SIZE } }),
+      api.get("/reference/users?role=engineer"),
+      api.get("/reference/users?role=client"),
     ]);
     setProjects(Array.isArray(p.data) ? p.data : p.data.data || []);
     setProjectPagination(
@@ -148,6 +158,8 @@ export default function AdminView() {
         ? { page: 1, totalPages: 1, total: cl.data.length }
         : cl.data.pagination || { page: 1, totalPages: 1, total: 0 }
     );
+    setEngineers(eng.data);
+    setClientUsers(cliUsers.data);
     const projectsRows = Array.isArray(p.data) ? p.data : p.data.data || [];
     if (!selectedProjectId && projectsRows.length) {
       setSelectedProjectId(projectsRows[0].id);
@@ -407,9 +419,10 @@ export default function AdminView() {
         clientId: projectForm.clientId || undefined,
         clientName: projectForm.clientName,
         location: projectForm.location,
+        driveLink: projectForm.driveLink,
         startDate: projectForm.startDate,
-        assignedEngineerIds: [],
-        clientUserIds: [],
+        engineerIds: projectForm.engineerIds,
+        clientUserIds: projectForm.clientUserIds,
         categorySequenceMode: !!projectForm.categorySequenceMode,
       });
       setNotice("Project created");
@@ -418,7 +431,10 @@ export default function AdminView() {
         clientId: "",
         clientName: "",
         location: "",
+        driveLink: "",
         startDate: new Date().toISOString().slice(0, 10),
+        engineerIds: [],
+        clientUserIds: [],
         categorySequenceMode: false,
       });
       setShowCreateProject(false);
@@ -553,6 +569,45 @@ export default function AdminView() {
                       value={projectForm.startDate}
                       onChange={(e) => setProjectForm((p) => ({ ...p, startDate: e.target.value }))}
                     />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      label="Drive Link (Optional)"
+                      size="small"
+                      fullWidth
+                      value={projectForm.driveLink}
+                      onChange={(e) => setProjectForm((p) => ({ ...p, driveLink: e.target.value }))}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Assigned Engineers</InputLabel>
+                      <Select
+                        multiple
+                        label="Assigned Engineers"
+                        value={projectForm.engineerIds}
+                        onChange={(e) => setProjectForm((p) => ({ ...p, engineerIds: e.target.value }))}
+                      >
+                        {engineers.map((u) => (
+                          <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Assigned Client Users</InputLabel>
+                      <Select
+                        multiple
+                        label="Assigned Client Users"
+                        value={projectForm.clientUserIds}
+                        onChange={(e) => setProjectForm((p) => ({ ...p, clientUserIds: e.target.value }))}
+                      >
+                        {clientUsers.map((u) => (
+                          <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </Grid>
                 </Grid>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>

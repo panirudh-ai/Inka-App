@@ -284,22 +284,61 @@ async function ensureClient(ctx, name, location = '') {
   return result.rows[0];
 }
 
-async function ensureProject(ctx, name, clientId, clientName, location) {
+async function ensureProject(ctx, name, clientId, clientName, location, driveLink) {
   const n = sanitizeEntityName(name, 'Unnamed Project');
   const loc = normalizeText(location) || 'Unknown';
   const cn = sanitizeEntityName(clientName, n);
+  const dl = driveLink ? driveLink.trim() : null;
   
+  // Check if project exists
   const { rows } = await pool.query(
-    `SELECT id FROM projects WHERE tenant_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
+    `SELECT id, drive_link FROM projects WHERE tenant_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
     [ctx.tenantId, n]
   );
-  if (rows.length) return rows[0];
+  
+  if (rows.length) {
+    // Update drive link if provided and project exists
+    if (dl && !rows[0].drive_link) {
+      await pool.query(
+        `UPDATE projects SET drive_link = $1, row_version = row_version + 1 WHERE id = $2`,
+        [dl, rows[0].id]
+      );
+    }
+    return { ...rows[0], created: false };
+  }
   
   const result = await pool.query(
-    `INSERT INTO projects (tenant_id, name, client_id, client_name, location, status, start_date, category_sequence_mode, created_by) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, $8) RETURNING id`,
-    [ctx.tenantId, n, clientId, cn, loc, 'active', false, ctx.userId]
+    `INSERT INTO projects (tenant_id, name, client_id, client_name, location, drive_link, status, start_date, category_sequence_mode, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE, $8, $9) RETURNING id`,
+    [ctx.tenantId, n, clientId, cn, loc, dl, 'active', false, ctx.userId]
   );
-  return result.rows[0];
+  return { ...result.rows[0], created: true };
+}
+
+async function ensureEngineer(ctx, name) {
+  const n = sanitizeEntityName(name, 'Unknown Engineer');
+  
+  // Check if user exists
+  const { rows } = await pool.query(
+    `SELECT id, name, role FROM users WHERE tenant_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
+    [ctx.tenantId, n]
+  );
+  
+  if (rows.length) return { ...rows[0], created: false };
+  
+  // Create new engineer user
+  const email = `${n.toLowerCase().replace(/[^a-z0-9]/g, '')}@imported.local`;
+  const result = await pool.query(
+    `INSERT INTO users (tenant_id, name, email, role, is_active, password_hash) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, role`,
+    [ctx.tenantId, n, email, 'engineer', true, 'IMPORTED_USER']
+  );
+  return { ...result.rows[0], created: true };
+}
+
+async function assignEngineerToProject(ctx, projectId, engineerId) {
+  await pool.query(
+    `INSERT INTO project_engineers (project_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    [projectId, engineerId]
+  );
 }
 
 async function createChangeRequest(ctx, projectId) {
@@ -354,6 +393,8 @@ router.post(
       productTypesCreated: 0,
       itemsCreated: 0,
       bomItemsCreated: 0,
+      engineersCreated: 0,
+      engineersAssigned: 0,
       errors: []
     };
 
@@ -405,6 +446,7 @@ router.post(
           if (/client/.test(val)) colMap.client = j;
           if (/location|site/.test(val)) colMap.location = j;
           if (/drive|gdrive|google/.test(val)) colMap.drive = j;
+          if (/eng.*charge|engineer.*charge/.test(val)) colMap.engineer = j;
         }
         if (row.some(cell => /project|sheet/.test(normalizeText(cell).toLowerCase()))) {
           headerRowIdx = i;
@@ -415,6 +457,9 @@ router.post(
       // Collect projects to import
       const masterSheets = workbook.SheetNames.slice(0, 3);
       const masterSheetSet = new Set(masterSheets.map(s => normalizeKey(s)));
+
+      // Collect engineers for assignment later
+      const engineersToAssign = {};
 
       for (let i = headerRowIdx + 1; i < projectListRows.length; i++) {
         const row = projectListRows[i];
@@ -429,11 +474,17 @@ router.post(
           clientName = clientBillingMap[clientName.toLowerCase()];
         }
         
+        // Extract engineer in charge
+        const engineerName = normalizeText(row[colMap.engineer] || row[4]); // Column E is "Eng. in Charge of BOM"
+        if (engineerName) {
+          engineersToAssign[sheetName] = engineerName;
+        }
+        
         projectsToImport.push({
           sheetName,
           clientName: clientName || sheetName,
           location: normalizeText(row[colMap.location]) || 'Unknown',
-          driveLink: normalizeText(row[colMap.drive]) || ''
+          driveLink: normalizeText(row[colMap.drive] || row[6]) || '' // Column G is "G-Drive Link"
         });
       }
 
@@ -519,9 +570,20 @@ router.post(
           const client = await ensureClient(req.ctx, proj.clientName, proj.location);
           if (client.created) summary.clientsCreated++;
 
-          // Create/update project
-          const project = await ensureProject(req.ctx, proj.sheetName, client.id, client.name, proj.location);
-          summary.projectsImported++;
+          // Create/update project with drive link
+          const project = await ensureProject(req.ctx, proj.sheetName, client.id, client.name, proj.location, proj.driveLink);
+          if (project.created) summary.projectsImported++;
+
+          // Assign engineer to project if specified
+          const engineerName = engineersToAssign[proj.sheetName];
+          if (engineerName) {
+            const engineer = await ensureEngineer(req.ctx, engineerName);
+            if (engineer.created) {
+              summary.engineersCreated = (summary.engineersCreated || 0) + 1;
+            }
+            await assignEngineerToProject(req.ctx, project.id, engineer.id);
+            summary.engineersAssigned = (summary.engineersAssigned || 0) + 1;
+          }
 
           // Process BOM items
           for (const entry of Object.values(bomAgg)) {
