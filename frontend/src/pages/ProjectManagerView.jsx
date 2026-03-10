@@ -183,13 +183,13 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   }
 
   useEffect(() => {
-    fetchProjects().catch(() => {});
-    fetchEngineers().catch(() => {});
-    fetchClientMasters().catch(() => {});
+    fetchProjects().catch(() => { });
+    fetchEngineers().catch(() => { });
+    fetchClientMasters().catch(() => { });
   }, []);
 
   useEffect(() => {
-    loadProject(projectId).catch(() => {});
+    loadProject(projectId).catch(() => { });
   }, [projectId]);
 
   useEffect(() => {
@@ -637,8 +637,8 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Paper sx={{ p: 1.5, mt: 1, bgcolor: "action.hover" }}>
             <Typography variant="subtitle2">Import Results:</Typography>
             <Typography variant="caption" display="block">
-              Projects: {excelImportResult.projectsImported} | Clients: {excelImportResult.clientsCreated} | 
-              Brands: {excelImportResult.brandsCreated} | Product Types: {excelImportResult.productTypesCreated} | 
+              Projects: {excelImportResult.projectsImported} | Clients: {excelImportResult.clientsCreated} |
+              Brands: {excelImportResult.brandsCreated} | Product Types: {excelImportResult.productTypesCreated} |
               Items: {excelImportResult.itemsCreated} | BOM Items: {excelImportResult.bomItemsCreated}
             </Typography>
             {excelImportResult.errors?.length > 0 && (
@@ -970,7 +970,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
 
           <Stack spacing={1} sx={{ mt: 2 }}>
             {deliveries.slice(0, 8).map((d) => (
-            <Paper key={d.id} sx={{ p: 1.2, border: `1px solid ${theme.palette.divider}` }}>
+              <Paper key={d.id} sx={{ p: 1.2, border: `1px solid ${theme.palette.divider}` }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>{d.full_name}</Typography>
                 <Typography variant="caption" color="text.secondary">
                   Qty {d.quantity} | {new Date(d.created_at).toLocaleString()} | {d.engineer_name || "Unknown"}
@@ -1045,17 +1045,17 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Typography variant="h6">Immutable Activity Feed</Typography>
           <Stack spacing={1} sx={{ mt: 1.2 }}>
             {activity.slice(0, 20).map((a) => (
-                <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
-                  </Typography>
-                  <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0, color: "text.secondary" }}>
-                    {JSON.stringify(a.metadata_json || {}, null, 2)}
-                  </Typography>
-                </Paper>
-              ))}
-            </Stack>
+              <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
+                </Typography>
+                <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0, color: "text.secondary" }}>
+                  {JSON.stringify(a.metadata_json || {}, null, 2)}
+                </Typography>
+              </Paper>
+            ))}
+          </Stack>
         </Paper>
       )}
 

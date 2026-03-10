@@ -647,198 +647,198 @@ export default function AdminView() {
               <Button size="small" disabled={projectPagination.page >= projectPagination.totalPages} onClick={() => setProjectPage((p) => p + 1)}>Next</Button>
             </Stack>
             <TableContainer className="admin-table-scroll">
-            <Table size="small" sx={{ mt: 1 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Project</TableCell>
-                  <TableCell>Client</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Open CR</TableCell>
-                  <TableCell>Visits</TableCell>
-                  <TableCell>Last Activity</TableCell>
-                  <TableCell>View</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {projects.map((p) => (
-                  <>
-                    <TableRow
-                      key={p.id}
-                      hover
-                      sx={{ cursor: "pointer", bgcolor: selectedProjectId === p.id ? "action.selected" : "transparent" }}
-                      onClick={() => setSelectedProjectId((prev) => (prev === p.id ? "" : p.id))}
-                    >
-                      <TableCell>{p.name}</TableCell>
-                      <TableCell>{p.client_name}</TableCell>
-                      <TableCell>{p.status}</TableCell>
-                      <TableCell>{p.has_open_cr ? "Yes" : "No"}</TableCell>
-                      <TableCell>{Number(p.visit_count || 0)}</TableCell>
-                      <TableCell>{p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}</TableCell>
-                      <TableCell>
-                        <Button
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedProjectId((prev) => (prev === p.id ? "" : p.id));
-                          }}
-                        >
-                          {selectedProjectId === p.id ? "Close" : "Open"}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ p: 0, borderBottom: selectedProjectId === p.id ? undefined : 0 }}>
-                        <Collapse in={selectedProjectId === p.id} timeout="auto" unmountOnExit>
-                          <Box sx={{ p: 1.5, bgcolor: "background.default" }}>
-                            {projectDetailsLoading ? (
-                              <Typography variant="body2" color="text.secondary">Loading project details...</Typography>
-                            ) : selectedProjectDashboard?.project?.id === p.id ? (
-                              <>
-                                <Grid container spacing={1}>
-                                  <Grid size={{ xs: 12, md: 3 }}>
-                                    <Typography variant="caption" color="text.secondary">Project</Typography>
-                                    <Typography variant="body2">{selectedProjectDashboard.project.name}</Typography>
+              <Table size="small" sx={{ mt: 1 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Project</TableCell>
+                    <TableCell>Client</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Open CR</TableCell>
+                    <TableCell>Visits</TableCell>
+                    <TableCell>Last Activity</TableCell>
+                    <TableCell>View</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {projects.map((p) => (
+                    <>
+                      <TableRow
+                        key={p.id}
+                        hover
+                        sx={{ cursor: "pointer", bgcolor: selectedProjectId === p.id ? "action.selected" : "transparent" }}
+                        onClick={() => setSelectedProjectId((prev) => (prev === p.id ? "" : p.id))}
+                      >
+                        <TableCell>{p.name}</TableCell>
+                        <TableCell>{p.client_name}</TableCell>
+                        <TableCell>{p.status}</TableCell>
+                        <TableCell>{p.has_open_cr ? "Yes" : "No"}</TableCell>
+                        <TableCell>{Number(p.visit_count || 0)}</TableCell>
+                        <TableCell>{p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProjectId((prev) => (prev === p.id ? "" : p.id));
+                            }}
+                          >
+                            {selectedProjectId === p.id ? "Close" : "Open"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell colSpan={7} sx={{ p: 0, borderBottom: selectedProjectId === p.id ? undefined : 0 }}>
+                          <Collapse in={selectedProjectId === p.id} timeout="auto" unmountOnExit>
+                            <Box sx={{ p: 1.5, bgcolor: "background.default" }}>
+                              {projectDetailsLoading ? (
+                                <Typography variant="body2" color="text.secondary">Loading project details...</Typography>
+                              ) : selectedProjectDashboard?.project?.id === p.id ? (
+                                <>
+                                  <Grid container spacing={1}>
+                                    <Grid size={{ xs: 12, md: 3 }}>
+                                      <Typography variant="caption" color="text.secondary">Project</Typography>
+                                      <Typography variant="body2">{selectedProjectDashboard.project.name}</Typography>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 3 }}>
+                                      <Typography variant="caption" color="text.secondary">Client</Typography>
+                                      <Typography variant="body2">{selectedProjectDashboard.project.client_name}</Typography>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 3 }}>
+                                      <Typography variant="caption" color="text.secondary">Location</Typography>
+                                      <Typography variant="body2">{selectedProjectDashboard.project.location}</Typography>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 3 }}>
+                                      <Typography variant="caption" color="text.secondary">Status</Typography>
+                                      <Typography variant="body2">{selectedProjectDashboard.project.status}</Typography>
+                                    </Grid>
                                   </Grid>
-                                  <Grid size={{ xs: 12, md: 3 }}>
-                                    <Typography variant="caption" color="text.secondary">Client</Typography>
-                                    <Typography variant="body2">{selectedProjectDashboard.project.client_name}</Typography>
-                                  </Grid>
-                                  <Grid size={{ xs: 12, md: 3 }}>
-                                    <Typography variant="caption" color="text.secondary">Location</Typography>
-                                    <Typography variant="body2">{selectedProjectDashboard.project.location}</Typography>
-                                  </Grid>
-                                  <Grid size={{ xs: 12, md: 3 }}>
-                                    <Typography variant="caption" color="text.secondary">Status</Typography>
-                                    <Typography variant="body2">{selectedProjectDashboard.project.status}</Typography>
-                                  </Grid>
-                                </Grid>
-                                {selectedProjectDashboard.project.drive_link ? (
-                                  <Button
-                                    sx={{ mt: 1 }}
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() =>
-                                      window.open(
-                                        selectedProjectDashboard.project.drive_link,
-                                        "_blank",
-                                        "noopener,noreferrer"
-                                      )
-                                    }
-                                  >
-                                    Open Drive Link
-                                  </Button>
-                                ) : null}
-                                <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
-                                  <Chip label={`BOM Items: ${(selectedProjectDashboard.bom || []).length}`} size="small" />
-                                  <Chip label={`Scope: INR ${Number(selectedProjectDashboard.summary?.total_scope_value || 0).toLocaleString()}`} size="small" color="primary" />
-                                  <Chip label={`Delivered: INR ${Number(selectedProjectDashboard.summary?.total_delivered_value || 0).toLocaleString()}`} size="small" color="success" />
-                                  <Chip label={`Balance: INR ${Number(selectedProjectDashboard.summary?.total_balance_value || 0).toLocaleString()}`} size="small" color="warning" />
-                                  <Chip label={`Visits: ${Number(selectedProjectVisitSummary?.totals?.total_visits || selectedProjectDashboard.summary?.visit_count || 0)}`} size="small" color="info" />
-                                  <Chip label={`Engineers: ${Number(selectedProjectVisitSummary?.totals?.engineer_count || 0)}`} size="small" />
-                                </Stack>
-                                <Grid container spacing={1} sx={{ mt: 0.5 }}>
-                                  <Grid size={{ xs: 12, md: 6 }}>
-                                    <Paper sx={{ p: 1, bgcolor: "action.hover" }}>
-                                      <Typography variant="caption" color="text.secondary">Visit By Engineer</Typography>
-                                      <Stack spacing={0.4} sx={{ mt: 0.5 }}>
-                                        {(selectedProjectVisitSummary?.byEngineer || []).slice(0, 6).map((v) => (
-                                          <Typography key={v.engineer_id || v.engineer_name} variant="caption">
-                                            {v.engineer_name}: {v.visit_count}
-                                          </Typography>
-                                        ))}
-                                        {!selectedProjectVisitSummary?.byEngineer?.length ? (
-                                          <Typography variant="caption" color="text.secondary">No visits logged yet.</Typography>
-                                        ) : null}
-                                      </Stack>
-                                    </Paper>
-                                  </Grid>
-                                  <Grid size={{ xs: 12, md: 6 }}>
-                                    <Paper sx={{ p: 1, bgcolor: "action.hover" }}>
-                                      <Typography variant="caption" color="text.secondary">Visit By Month</Typography>
-                                      <Stack spacing={0.4} sx={{ mt: 0.5 }}>
-                                        {(selectedProjectVisitSummary?.byMonth || []).slice(0, 6).map((v) => (
-                                          <Typography key={v.month_key} variant="caption">
-                                            {v.month_key}: {v.visit_count}
-                                          </Typography>
-                                        ))}
-                                        {!selectedProjectVisitSummary?.byMonth?.length ? (
-                                          <Typography variant="caption" color="text.secondary">No monthly data.</Typography>
-                                        ) : null}
-                                      </Stack>
-                                    </Paper>
-                                  </Grid>
-                                </Grid>
-                                <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }} alignItems={{ md: "center" }}>
-                                  <Button variant="outlined" component="label" size="small">
-                                    {selectedProjectUploadFile ? `Selected: ${selectedProjectUploadFile.name}` : "Select File For Drive"}
-                                    <input hidden type="file" onChange={(e) => setSelectedProjectUploadFile(e.target.files?.[0] || null)} />
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="contained"
-                                    disabled={!selectedProjectUploadFile || selectedProjectUploading}
-                                    onClick={() => uploadProjectDriveFile(p.id)}
-                                  >
-                                    {selectedProjectUploading ? "Uploading..." : "Upload To Google Drive"}
-                                  </Button>
-                                </Stack>
-                                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={async () => {
-                                      const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
-                                      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-                                      const a = document.createElement("a");
-                                      a.href = url;
-                                      a.download = `inka_report_${p.id}.pdf`;
-                                      a.click();
-                                      URL.revokeObjectURL(url);
-                                    }}
-                                  >
-                                    Download PDF Report
-                                  </Button>
-                                </Stack>
-                                {selectedProjectDriveFiles.length ? (
-                                  <Stack spacing={0.4} sx={{ mt: 1 }}>
-                                    <Typography variant="caption" color="text.secondary">Drive Files</Typography>
-                                    {selectedProjectDriveFiles.slice(0, 8).map((f) => (
-                                      <Button
-                                        key={f.id}
-                                        size="small"
-                                        variant="text"
-                                        sx={{ justifyContent: "flex-start" }}
-                                        onClick={() => window.open(f.webViewLink || f.webContentLink, "_blank", "noopener,noreferrer")}
-                                      >
-                                        {f.name}
-                                      </Button>
-                                    ))}
-                                  </Stack>
-                                ) : null}
-                                <Divider sx={{ my: 1 }} />
-                                <Typography variant="caption" color="text.secondary">Recent Activity</Typography>
-                                <Stack spacing={0.6} sx={{ mt: 0.5 }}>
-                                  {selectedProjectActivity.slice(0, 8).map((a) => (
-                                    <Typography key={a.id} variant="caption">
-                                      {a.action_type} | {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
-                                    </Typography>
-                                  ))}
-                                  {!selectedProjectActivity.length ? (
-                                    <Typography variant="caption" color="text.secondary">No activity found.</Typography>
+                                  {selectedProjectDashboard.project.drive_link ? (
+                                    <Button
+                                      sx={{ mt: 1 }}
+                                      size="small"
+                                      variant="outlined"
+                                      onClick={() =>
+                                        window.open(
+                                          selectedProjectDashboard.project.drive_link,
+                                          "_blank",
+                                          "noopener,noreferrer"
+                                        )
+                                      }
+                                    >
+                                      Open Drive Link
+                                    </Button>
                                   ) : null}
-                                </Stack>
-                              </>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">Loading project details...</Typography>
-                            )}
-                          </Box>
-                        </Collapse>
-                      </TableCell>
-                    </TableRow>
-                  </>
-                ))}
-              </TableBody>
-            </Table>
+                                  <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+                                    <Chip label={`BOM Items: ${(selectedProjectDashboard.bom || []).length}`} size="small" />
+                                    <Chip label={`Scope: INR ${Number(selectedProjectDashboard.summary?.total_scope_value || 0).toLocaleString()}`} size="small" color="primary" />
+                                    <Chip label={`Delivered: INR ${Number(selectedProjectDashboard.summary?.total_delivered_value || 0).toLocaleString()}`} size="small" color="success" />
+                                    <Chip label={`Balance: INR ${Number(selectedProjectDashboard.summary?.total_balance_value || 0).toLocaleString()}`} size="small" color="warning" />
+                                    <Chip label={`Visits: ${Number(selectedProjectVisitSummary?.totals?.total_visits || selectedProjectDashboard.summary?.visit_count || 0)}`} size="small" color="info" />
+                                    <Chip label={`Engineers: ${Number(selectedProjectVisitSummary?.totals?.engineer_count || 0)}`} size="small" />
+                                  </Stack>
+                                  <Grid container spacing={1} sx={{ mt: 0.5 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                      <Paper sx={{ p: 1, bgcolor: "action.hover" }}>
+                                        <Typography variant="caption" color="text.secondary">Visit By Engineer</Typography>
+                                        <Stack spacing={0.4} sx={{ mt: 0.5 }}>
+                                          {(selectedProjectVisitSummary?.byEngineer || []).slice(0, 6).map((v) => (
+                                            <Typography key={v.engineer_id || v.engineer_name} variant="caption">
+                                              {v.engineer_name}: {v.visit_count}
+                                            </Typography>
+                                          ))}
+                                          {!selectedProjectVisitSummary?.byEngineer?.length ? (
+                                            <Typography variant="caption" color="text.secondary">No visits logged yet.</Typography>
+                                          ) : null}
+                                        </Stack>
+                                      </Paper>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                      <Paper sx={{ p: 1, bgcolor: "action.hover" }}>
+                                        <Typography variant="caption" color="text.secondary">Visit By Month</Typography>
+                                        <Stack spacing={0.4} sx={{ mt: 0.5 }}>
+                                          {(selectedProjectVisitSummary?.byMonth || []).slice(0, 6).map((v) => (
+                                            <Typography key={v.month_key} variant="caption">
+                                              {v.month_key}: {v.visit_count}
+                                            </Typography>
+                                          ))}
+                                          {!selectedProjectVisitSummary?.byMonth?.length ? (
+                                            <Typography variant="caption" color="text.secondary">No monthly data.</Typography>
+                                          ) : null}
+                                        </Stack>
+                                      </Paper>
+                                    </Grid>
+                                  </Grid>
+                                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }} alignItems={{ md: "center" }}>
+                                    <Button variant="outlined" component="label" size="small">
+                                      {selectedProjectUploadFile ? `Selected: ${selectedProjectUploadFile.name}` : "Select File For Drive"}
+                                      <input hidden type="file" onChange={(e) => setSelectedProjectUploadFile(e.target.files?.[0] || null)} />
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="contained"
+                                      disabled={!selectedProjectUploadFile || selectedProjectUploading}
+                                      onClick={() => uploadProjectDriveFile(p.id)}
+                                    >
+                                      {selectedProjectUploading ? "Uploading..." : "Upload To Google Drive"}
+                                    </Button>
+                                  </Stack>
+                                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      onClick={async () => {
+                                        const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
+                                        const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                                        const a = document.createElement("a");
+                                        a.href = url;
+                                        a.download = `inka_report_${p.id}.pdf`;
+                                        a.click();
+                                        URL.revokeObjectURL(url);
+                                      }}
+                                    >
+                                      Download PDF Report
+                                    </Button>
+                                  </Stack>
+                                  {selectedProjectDriveFiles.length ? (
+                                    <Stack spacing={0.4} sx={{ mt: 1 }}>
+                                      <Typography variant="caption" color="text.secondary">Drive Files</Typography>
+                                      {selectedProjectDriveFiles.slice(0, 8).map((f) => (
+                                        <Button
+                                          key={f.id}
+                                          size="small"
+                                          variant="text"
+                                          sx={{ justifyContent: "flex-start" }}
+                                          onClick={() => window.open(f.webViewLink || f.webContentLink, "_blank", "noopener,noreferrer")}
+                                        >
+                                          {f.name}
+                                        </Button>
+                                      ))}
+                                    </Stack>
+                                  ) : null}
+                                  <Divider sx={{ my: 1 }} />
+                                  <Typography variant="caption" color="text.secondary">Recent Activity</Typography>
+                                  <Stack spacing={0.6} sx={{ mt: 0.5 }}>
+                                    {selectedProjectActivity.slice(0, 8).map((a) => (
+                                      <Typography key={a.id} variant="caption">
+                                        {a.action_type} | {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
+                                      </Typography>
+                                    ))}
+                                    {!selectedProjectActivity.length ? (
+                                      <Typography variant="caption" color="text.secondary">No activity found.</Typography>
+                                    ) : null}
+                                  </Stack>
+                                </>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">Loading project details...</Typography>
+                              )}
+                            </Box>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  ))}
+                </TableBody>
+              </Table>
             </TableContainer>
             <Typography variant="caption" color="text.secondary">
               Showing {projects.length} of {projectPagination.total} projects.
@@ -1020,64 +1020,64 @@ export default function AdminView() {
               </Button>
             </Stack>
             <TableContainer className="admin-table-scroll">
-            <Table size="small">
-              <TableHead><TableRow><TableCell>Name</TableCell><TableCell>Category</TableCell><TableCell>Active</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>
-              <TableBody>
-                {pagedProductTypes.map((pt) => (
-                  <TableRow key={pt.id}>
-                    <TableCell>
-                      {editingProductTypeId === pt.id ? (
-                        <TextField
-                          size="small"
-                          value={editProductType[pt.id]?.name ?? pt.name}
-                          onChange={(e) =>
-                            setEditProductType((prev) => ({
-                              ...prev,
-                              [pt.id]: { ...(prev[pt.id] || {}), name: e.target.value },
-                            }))
-                          }
-                        />
-                      ) : (
-                        pt.name
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {editingProductTypeId === pt.id ? (
-                        <TextField
-                          select
-                          size="small"
-                          value={editProductType[pt.id]?.categoryId ?? pt.category_id}
-                          onChange={(e) =>
-                            setEditProductType((prev) => ({
-                              ...prev,
-                              [pt.id]: { ...(prev[pt.id] || {}), categoryId: e.target.value },
-                            }))
-                          }
-                        >
-                          {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-                        </TextField>
-                      ) : (
-                        categories.find((c) => c.id === pt.category_id)?.name || "-"
-                      )}
-                    </TableCell>
-                    <TableCell><Switch checked={!!pt.is_active} onChange={() => toggleProductType(pt).catch(() => setNotice("Toggle failed"))} /></TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1}>
+              <Table size="small">
+                <TableHead><TableRow><TableCell>Name</TableCell><TableCell>Category</TableCell><TableCell>Active</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {pagedProductTypes.map((pt) => (
+                    <TableRow key={pt.id}>
+                      <TableCell>
                         {editingProductTypeId === pt.id ? (
-                          <>
-                            <Button size="small" onClick={() => saveProductType(pt.id).catch(() => setNotice("Save failed"))}>Save</Button>
-                            <Button size="small" onClick={() => setEditingProductTypeId(null)}>Cancel</Button>
-                          </>
+                          <TextField
+                            size="small"
+                            value={editProductType[pt.id]?.name ?? pt.name}
+                            onChange={(e) =>
+                              setEditProductType((prev) => ({
+                                ...prev,
+                                [pt.id]: { ...(prev[pt.id] || {}), name: e.target.value },
+                              }))
+                            }
+                          />
                         ) : (
-                          <Button size="small" onClick={() => setEditingProductTypeId(pt.id)}>Edit</Button>
+                          pt.name
                         )}
-                        <Button size="small" color="error" onClick={() => deleteProductType(pt.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </TableCell>
+                      <TableCell>
+                        {editingProductTypeId === pt.id ? (
+                          <TextField
+                            select
+                            size="small"
+                            value={editProductType[pt.id]?.categoryId ?? pt.category_id}
+                            onChange={(e) =>
+                              setEditProductType((prev) => ({
+                                ...prev,
+                                [pt.id]: { ...(prev[pt.id] || {}), categoryId: e.target.value },
+                              }))
+                            }
+                          >
+                            {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+                          </TextField>
+                        ) : (
+                          categories.find((c) => c.id === pt.category_id)?.name || "-"
+                        )}
+                      </TableCell>
+                      <TableCell><Switch checked={!!pt.is_active} onChange={() => toggleProductType(pt).catch(() => setNotice("Toggle failed"))} /></TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1}>
+                          {editingProductTypeId === pt.id ? (
+                            <>
+                              <Button size="small" onClick={() => saveProductType(pt.id).catch(() => setNotice("Save failed"))}>Save</Button>
+                              <Button size="small" onClick={() => setEditingProductTypeId(null)}>Cancel</Button>
+                            </>
+                          ) : (
+                            <Button size="small" onClick={() => setEditingProductTypeId(pt.id)}>Edit</Button>
+                          )}
+                          <Button size="small" color="error" onClick={() => deleteProductType(pt.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </TableContainer>
             <Typography variant="caption" color="text.secondary">
               Showing {pagedProductTypes.length} of {productTypes.length} product types.
@@ -1166,60 +1166,60 @@ export default function AdminView() {
             </Grid>
             <Divider sx={{ my: 1.4 }} />
             <TableContainer className="admin-table-scroll">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Category</TableCell>
-                  <TableCell>Product Type</TableCell>
-                  <TableCell>Brand</TableCell>
-                  <TableCell>Model</TableCell>
-                  <TableCell>Rate</TableCell>
-                  <TableCell>Active</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.slice(0, 50).map((i) => (
-                  <TableRow key={i.id}>
-                    <TableCell>{i.category_name}</TableCell>
-                    <TableCell>{i.product_type_name}</TableCell>
-                    <TableCell>{i.brand_name}</TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        value={editItem[i.id]?.modelNumber ?? i.model_number}
-                        onChange={(e) =>
-                          setEditItem((prev) => ({
-                            ...prev,
-                            [i.id]: { ...(prev[i.id] || {}), modelNumber: e.target.value },
-                          }))
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        type="number"
-                        value={editItem[i.id]?.defaultRate ?? i.default_rate}
-                        onChange={(e) =>
-                          setEditItem((prev) => ({
-                            ...prev,
-                            [i.id]: { ...(prev[i.id] || {}), defaultRate: Number(e.target.value || 0) },
-                          }))
-                        }
-                      />
-                    </TableCell>
-                    <TableCell><Switch checked={!!i.is_active} onChange={() => toggleItem(i).catch(() => setNotice("Toggle failed"))} /></TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={1}>
-                        <Button size="small" onClick={() => saveItem(i.id).catch(() => setNotice("Save failed"))}>Save</Button>
-                        <Button size="small" color="error" onClick={() => deleteItem(i.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
-                      </Stack>
-                    </TableCell>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Product Type</TableCell>
+                    <TableCell>Brand</TableCell>
+                    <TableCell>Model</TableCell>
+                    <TableCell>Rate</TableCell>
+                    <TableCell>Active</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {items.slice(0, 50).map((i) => (
+                    <TableRow key={i.id}>
+                      <TableCell>{i.category_name}</TableCell>
+                      <TableCell>{i.product_type_name}</TableCell>
+                      <TableCell>{i.brand_name}</TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          value={editItem[i.id]?.modelNumber ?? i.model_number}
+                          onChange={(e) =>
+                            setEditItem((prev) => ({
+                              ...prev,
+                              [i.id]: { ...(prev[i.id] || {}), modelNumber: e.target.value },
+                            }))
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={editItem[i.id]?.defaultRate ?? i.default_rate}
+                          onChange={(e) =>
+                            setEditItem((prev) => ({
+                              ...prev,
+                              [i.id]: { ...(prev[i.id] || {}), defaultRate: Number(e.target.value || 0) },
+                            }))
+                          }
+                        />
+                      </TableCell>
+                      <TableCell><Switch checked={!!i.is_active} onChange={() => toggleItem(i).catch(() => setNotice("Toggle failed"))} /></TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={1}>
+                          <Button size="small" onClick={() => saveItem(i.id).catch(() => setNotice("Save failed"))}>Save</Button>
+                          <Button size="small" color="error" onClick={() => deleteItem(i.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </TableContainer>
           </Paper>
         )}
@@ -1268,60 +1268,60 @@ export default function AdminView() {
             </Stack>
             <Divider sx={{ my: 1.4 }} />
             <TableContainer className="admin-table-scroll">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Active</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell>{u.name}</TableCell>
-                    <TableCell>{u.email}</TableCell>
-                    <TableCell>
-                      <TextField
-                        select
-                        size="small"
-                        value={u.role}
-                        onChange={async (e) => {
-                          try {
-                            await api.patch(`/admin/users/${u.id}`, { role: e.target.value });
-                            await loadAll();
-                          } catch {
-                            setNotice("Role update failed");
-                          }
-                        }}
-                      >
-                        {["admin", "project_manager", "engineer", "client"].map((r) => (
-                          <MenuItem key={r} value={r}>{r}</MenuItem>
-                        ))}
-                      </TextField>
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={!!u.is_active}
-                        onChange={async () => {
-                          try {
-                            await api.patch(`/admin/users/${u.id}`, { isActive: !u.is_active });
-                            await loadAll();
-                          } catch {
-                            setNotice("Status update failed");
-                          }
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Button size="small" color="error" onClick={() => deleteUser(u.id).catch(() => setNotice("Delete user failed"))}>Delete</Button>
-                    </TableCell>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Active</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {users.map((u) => (
+                    <TableRow key={u.id}>
+                      <TableCell>{u.name}</TableCell>
+                      <TableCell>{u.email}</TableCell>
+                      <TableCell>
+                        <TextField
+                          select
+                          size="small"
+                          value={u.role}
+                          onChange={async (e) => {
+                            try {
+                              await api.patch(`/admin/users/${u.id}`, { role: e.target.value });
+                              await loadAll();
+                            } catch {
+                              setNotice("Role update failed");
+                            }
+                          }}
+                        >
+                          {["admin", "project_manager", "engineer", "client"].map((r) => (
+                            <MenuItem key={r} value={r}>{r}</MenuItem>
+                          ))}
+                        </TextField>
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={!!u.is_active}
+                          onChange={async () => {
+                            try {
+                              await api.patch(`/admin/users/${u.id}`, { isActive: !u.is_active });
+                              await loadAll();
+                            } catch {
+                              setNotice("Status update failed");
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button size="small" color="error" onClick={() => deleteUser(u.id).catch(() => setNotice("Delete user failed"))}>Delete</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </TableContainer>
             <Typography variant="caption" color="text.secondary">
               Showing {users.length} of {userPagination.total} users.
@@ -1346,38 +1346,38 @@ export default function AdminView() {
             </Typography>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>Role Policy Matrix</Typography>
             <TableContainer className="admin-table-scroll">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Capability</TableCell>
-                  <TableCell>Admin</TableCell>
-                  <TableCell>Project Manager</TableCell>
-                  <TableCell>Engineer</TableCell>
-                  <TableCell>Client</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {[
-                  ["Client Master CRUD", "Yes", "Yes", "No", "No"],
-                  ["Master Data CRUD", "Yes", "No", "No", "No"],
-                  ["Create / Update Project", "Yes", "Yes", "No", "No"],
-                  ["Create / Edit CR", "Yes", "Yes", "No", "No"],
-                  ["Approve / Reject CR", "Yes", "Yes", "No", "No"],
-                  ["Log Delivery", "Yes", "Yes", "Yes", "No"],
-                  ["Update Work Status", "Yes", "Yes", "Yes", "No"],
-                  ["View Activity Feed", "Yes", "Yes", "Yes", "Yes (filtered)"],
-                  ["Download Project PDF", "Yes", "Yes", "Yes", "Yes"],
-                ].map((row) => (
-                  <TableRow key={row[0]}>
-                    <TableCell>{row[0]}</TableCell>
-                    <TableCell>{row[1]}</TableCell>
-                    <TableCell>{row[2]}</TableCell>
-                    <TableCell>{row[3]}</TableCell>
-                    <TableCell>{row[4]}</TableCell>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Capability</TableCell>
+                    <TableCell>Admin</TableCell>
+                    <TableCell>Project Manager</TableCell>
+                    <TableCell>Engineer</TableCell>
+                    <TableCell>Client</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {[
+                    ["Client Master CRUD", "Yes", "Yes", "No", "No"],
+                    ["Master Data CRUD", "Yes", "No", "No", "No"],
+                    ["Create / Update Project", "Yes", "Yes", "No", "No"],
+                    ["Create / Edit CR", "Yes", "Yes", "No", "No"],
+                    ["Approve / Reject CR", "Yes", "Yes", "No", "No"],
+                    ["Log Delivery", "Yes", "Yes", "Yes", "No"],
+                    ["Update Work Status", "Yes", "Yes", "Yes", "No"],
+                    ["View Activity Feed", "Yes", "Yes", "Yes", "Yes (filtered)"],
+                    ["Download Project PDF", "Yes", "Yes", "Yes", "Yes"],
+                  ].map((row) => (
+                    <TableRow key={row[0]}>
+                      <TableCell>{row[0]}</TableCell>
+                      <TableCell>{row[1]}</TableCell>
+                      <TableCell>{row[2]}</TableCell>
+                      <TableCell>{row[3]}</TableCell>
+                      <TableCell>{row[4]}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </TableContainer>
             <Divider sx={{ my: 2 }} />
             <Typography variant="h6" sx={{ mb: 1 }}>Excel Import</Typography>
@@ -1407,9 +1407,9 @@ export default function AdminView() {
               <Paper sx={{ p: 1.5, mt: 1, bgcolor: "action.hover" }}>
                 <Typography variant="subtitle2">Import Results:</Typography>
                 <Typography variant="caption" display="block">
-                  Projects: {excelImportResult.projectsImported} | Clients: {excelImportResult.clientsCreated} | 
-                  Categories: {excelImportResult.categoriesCreated} | Brands: {excelImportResult.brandsCreated} | 
-                  Product Types: {excelImportResult.productTypesCreated} | Items: {excelImportResult.itemsCreated} | 
+                  Projects: {excelImportResult.projectsImported} | Clients: {excelImportResult.clientsCreated} |
+                  Categories: {excelImportResult.categoriesCreated} | Brands: {excelImportResult.brandsCreated} |
+                  Product Types: {excelImportResult.productTypesCreated} | Items: {excelImportResult.itemsCreated} |
                   BOM Items: {excelImportResult.bomItemsCreated}
                 </Typography>
                 {excelImportResult.errors?.length > 0 && (

@@ -164,21 +164,21 @@ export default function EngineerView() {
   }
 
   useEffect(() => {
-    loadProjects().catch(() => {});
+    loadProjects().catch(() => { });
   }, []);
 
   useEffect(() => {
-    loadProjectData(projectId).catch(() => {});
+    loadProjectData(projectId).catch(() => { });
   }, [projectId]);
 
   useEffect(() => {
     function handleOnline() {
-      syncOffline().catch(() => {});
+      syncOffline().catch(() => { });
     }
     window.addEventListener("online", handleOnline);
     const timer = setInterval(() => {
       if (navigator.onLine && offlineQueue.length) {
-        syncOffline().catch(() => {});
+        syncOffline().catch(() => { });
       }
     }, 10000);
     return () => {
