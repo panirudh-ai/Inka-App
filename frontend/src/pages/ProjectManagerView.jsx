@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  Fade,
   FormControl,
   Grid2 as Grid,
   InputLabel,
@@ -41,6 +42,7 @@ import AddIcon from "@mui/icons-material/Add";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import HierarchySelector from "../components/HierarchySelector";
 import { api } from "../api/client";
+import KpiCard from "../components/KpiCard";
 
 export default function ProjectManagerView({ masterData, role = "project_manager" }) {
   const theme = useTheme();
@@ -112,9 +114,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   const [excelImportFile, setExcelImportFile] = useState(null);
   const [excelImporting, setExcelImporting] = useState(false);
   const [excelImportResult, setExcelImportResult] = useState(null);
+  const PAGE_SIZE = 25;
+  const [projectPage, setProjectPage] = useState(1);
+  const [projectPagination, setProjectPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [clientPage, setClientPage] = useState(1);
+  const [clientPagination, setClientPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const canEditScope = role === "admin" || role === "project_manager";
+  const [outerTab, setOuterTab] = useState(0);
 
   const openCr = useMemo(() => crs.find((c) => c.status === "draft" || c.status === "pending"), [crs]);
+  const openCrCount = useMemo(() => projects.filter((p) => p.has_open_cr).length, [projects]);
 
   const grouped = useMemo(() => {
     const map = new Map();
@@ -137,9 +146,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   );
 
   async function fetchProjects() {
-    const { data } = await api.get("/projects");
-    setProjects(data);
-    if (data.length && !projectId) setProjectId(data[0].id);
+    const { data } = await api.get("/projects", { params: { paginated: true, page: projectPage, limit: PAGE_SIZE } });
+    const rows = Array.isArray(data) ? data : data.data || [];
+    setProjects(rows);
+    setProjectPagination(Array.isArray(data) ? { page: 1, totalPages: 1, total: data.length } : data.pagination || { page: 1, totalPages: 1, total: 0 });
+    if (rows.length && !projectId) setProjectId(rows[0].id);
   }
 
   async function fetchEngineers() {
@@ -152,8 +163,9 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   }
 
   async function fetchClientMasters() {
-    const { data } = await api.get("/clients");
+    const { data } = await api.get("/clients", { params: { paginated: true, page: clientPage, limit: PAGE_SIZE } });
     setClientMasters(Array.isArray(data) ? data : data.data || []);
+    setClientPagination(Array.isArray(data) ? { page: 1, totalPages: 1, total: data.length } : data.pagination || { page: 1, totalPages: 1, total: 0 });
   }
 
   async function loadProject(pid) {
@@ -183,10 +195,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   }
 
   useEffect(() => {
-    fetchProjects().catch(() => { });
     fetchEngineers().catch(() => { });
-    fetchClientMasters().catch(() => { });
   }, []);
+
+  useEffect(() => {
+    fetchProjects().catch(() => { });
+  }, [projectPage]);
+
+  useEffect(() => {
+    fetchClientMasters().catch(() => { });
+  }, [clientPage]);
 
   useEffect(() => {
     loadProject(projectId).catch(() => { });
@@ -429,11 +447,47 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   }
 
   return (
+    <Fade in timeout={420}>
     <Box>
+      <Grid container spacing={2.2} sx={{ mb: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+          <KpiCard title="Total Projects" value={projects.length} subtitle="Portfolio visibility" />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+          <KpiCard title="Open CRs" value={openCrCount} subtitle="Pending approvals" color="#dc2626" />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+          <KpiCard title="Total Clients" value={clientMasters.length} subtitle="Client accounts" color="#2563eb" />
+        </Grid>
+      </Grid>
+
+      <Paper sx={{ mb: 2, p: 1 }}>
+        <Tabs
+          value={outerTab}
+          onChange={(_, v) => setOuterTab(v)}
+          variant="scrollable"
+          allowScrollButtonsMobile
+          scrollButtons="auto"
+        >
+          <Tab label="Projects" />
+          <Tab label="Clients" />
+          <Tab label="Reports" />
+        </Tabs>
+      </Paper>
+
+      {outerTab === 0 && (
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ md: "center" }}>
           <Typography variant="h6">Project List</Typography>
           <Button variant="contained" onClick={() => setOpenCreateProject(true)}>Create Project</Button>
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+          <Button size="small" disabled={projectPagination.page <= 1} onClick={() => setProjectPage((p) => Math.max(1, p - 1))}>Prev</Button>
+          <Typography variant="caption" color="text.secondary">
+            Page {projectPagination.page} / {projectPagination.totalPages}
+          </Typography>
+          <Button size="small" disabled={projectPagination.page >= projectPagination.totalPages} onClick={() => setProjectPage((p) => p + 1)}>Next</Button>
+          <Typography variant="caption" color="text.secondary">({projectPagination.total} total)</Typography>
         </Stack>
         {isMobile ? (
           <Stack spacing={1.1} sx={{ mt: 1.2 }}>
@@ -523,7 +577,18 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                                 </>
                               ) : null}
                             </Stack>
-                            <Button sx={{ mt: 1 }} size="small" variant="outlined" onClick={() => setProjectId(p.id)}>
+                            <Button
+                              sx={{ mt: 1 }}
+                              size="small"
+                              variant="outlined"
+                              onClick={() => {
+                                setProjectId(p.id);
+                                loadProject(p.id).catch(() => {});
+                                setTimeout(() => {
+                                  document.getElementById('pm-project-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }, 150);
+                              }}
+                            >
                               Open In Dashboard
                             </Button>
                           </Box>
@@ -537,7 +602,10 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           </TableContainer>
         )}
       </Paper>
+      )}
 
+      {outerTab === 1 && (
+      <>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6">Client Master</Typography>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }}>
@@ -547,6 +615,14 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <TextField size="small" label="Phone" value={clientMasterForm.primaryContactPhone} onChange={(e) => setClientMasterForm((p) => ({ ...p, primaryContactPhone: e.target.value }))} />
           <TextField size="small" label="Email" value={clientMasterForm.primaryContactEmail} onChange={(e) => setClientMasterForm((p) => ({ ...p, primaryContactEmail: e.target.value }))} />
           <Button variant="contained" onClick={() => createClientMaster().catch(() => setToast({ open: true, severity: "error", text: "Create client failed" }))}>Add</Button>
+        </Stack>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+          <Button size="small" disabled={clientPagination.page <= 1} onClick={() => setClientPage((p) => Math.max(1, p - 1))}>Prev</Button>
+          <Typography variant="caption" color="text.secondary">
+            Page {clientPagination.page} / {clientPagination.totalPages}
+          </Typography>
+          <Button size="small" disabled={clientPagination.page >= clientPagination.totalPages} onClick={() => setClientPage((p) => p + 1)}>Next</Button>
+          <Typography variant="caption" color="text.secondary">({clientPagination.total} total)</Typography>
         </Stack>
         <TableContainer sx={{ mt: 1, overflowX: "auto" }}>
           <Table size="small">
@@ -649,8 +725,12 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           </Paper>
         )}
       </Paper>
+      </>
+      )}
 
-      <Paper sx={{ p: 2.2, mb: 2 }}>
+      {outerTab === 0 && (
+      <>
+      <Paper id="pm-project-dashboard" sx={{ p: 2.2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }} justifyContent="space-between">
           <Typography variant="h6">Project Dashboard</Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} sx={{ width: { xs: "100%", md: "auto" } }}>
@@ -1058,6 +1138,87 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           </Stack>
         </Paper>
       )}
+      </>
+      )}
+
+      {outerTab === 2 && (
+        <Paper sx={{ p: 2, mt: 1.5 }}>
+          <Typography variant="h6">Reports</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+            Select a project to download its PDF report.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }}>
+            <FormControl size="small" sx={{ minWidth: 280 }}>
+              <InputLabel>Project</InputLabel>
+              <Select
+                label="Project"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+              >
+                {projects.map((p) => (
+                  <MenuItem key={p.id} value={p.id}>{p.name} — {p.client_name || "No client"}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              disabled={!projectId}
+              onClick={async () => {
+                if (!projectId) return;
+                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `inka_report_${projectId}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Download PDF Report
+            </Button>
+          </Stack>
+          {projects.length > 0 && (
+            <TableContainer sx={{ mt: 2 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Project</TableCell>
+                    <TableCell>Client</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Download</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {projects.map((p) => (
+                    <TableRow key={p.id} hover>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell>{p.client_name || "-"}</TableCell>
+                      <TableCell><Chip label={p.status} size="small" /></TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={async () => {
+                            const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
+                            const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `inka_report_${p.id}.pdf`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                        >
+                          PDF
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
+      )}
 
       <Dialog open={openAdd} onClose={() => setOpenAdd(false)} fullWidth maxWidth="md">
         <DialogTitle>Add BOM Item</DialogTitle>
@@ -1191,5 +1352,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
         <Alert severity={toast.severity}>{toast.text}</Alert>
       </Snackbar>
     </Box>
+    </Fade>
   );
 }

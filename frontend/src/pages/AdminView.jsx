@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControl,
   FormControlLabel,
@@ -13,6 +21,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  Snackbar,
   Stack,
   Switch,
   Tab,
@@ -26,9 +35,14 @@ import {
   TextField,
   Typography,
   Fade,
+  Zoom,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AddIcon from "@mui/icons-material/Add";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import HierarchySelector from "../components/HierarchySelector";
 import KpiCard from "../components/KpiCard";
 import { api } from "../api/client";
 
@@ -73,6 +87,35 @@ export default function AdminView() {
   const [projectPagination, setProjectPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [userPagination, setUserPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [clientPagination, setClientPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+
+  // Admin inner dashboard tabs
+  const [adminInnerTab, setAdminInnerTab] = useState(0);
+  const [adminCrs, setAdminCrs] = useState([]);
+  const [adminDeliveries, setAdminDeliveries] = useState([]);
+  const [adminVisits, setAdminVisits] = useState([]);
+  const [adminCrDiff, setAdminCrDiff] = useState({ diff: [], summary: { totalDeltaQty: 0 } });
+  const [adminVisitNotes, setAdminVisitNotes] = useState("");
+  // BOM add dialog
+  const [adminOpenAdd, setAdminOpenAdd] = useState(false);
+  const [adminSelector, setAdminSelector] = useState({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+  const [adminQty, setAdminQty] = useState(1);
+  const [adminRate, setAdminRate] = useState(0);
+  const [adminFloorLabel, setAdminFloorLabel] = useState("Unassigned");
+  const [adminLocationDescription, setAdminLocationDescription] = useState("");
+  // CR item add
+  const [adminCrSelector, setAdminCrSelector] = useState({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+  const [adminCrChangeType, setAdminCrChangeType] = useState("add");
+  const [adminCrQty, setAdminCrQty] = useState(1);
+  const [adminCrFloorLabel, setAdminCrFloorLabel] = useState("Unassigned");
+  const [adminCrLocationDescription, setAdminCrLocationDescription] = useState("");
+  // Delivery
+  const [adminDeliverySelector, setAdminDeliverySelector] = useState({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+  const [adminDeliveryQty, setAdminDeliveryQty] = useState(1);
+  const [adminDeliveryNotes, setAdminDeliveryNotes] = useState("");
+  const [adminDeliveryPhotoFile, setAdminDeliveryPhotoFile] = useState(null);
+  const [adminToast, setAdminToast] = useState({ open: false, severity: "success", text: "" });
+  const [adminProjectContacts, setAdminProjectContacts] = useState([]);
+  const [adminProjectClientIds, setAdminProjectClientIds] = useState([]);
 
   const [catForm, setCatForm] = useState({ name: "", sequenceOrder: 1, isActive: true });
   const [ptForm, setPtForm] = useState({ name: "", categoryId: "", isActive: true });
@@ -170,16 +213,24 @@ export default function AdminView() {
     if (!projectId) return;
     setProjectDetailsLoading(true);
     try {
-      const [dashboardRes, activityRes, visitSummaryRes] = await Promise.all([
+      const [dashboardRes, activityRes, visitSummaryRes, crRes, deliveryRes, visitsRes] = await Promise.all([
         api.get(`/projects/${projectId}/dashboard`),
         api.get(`/projects/${projectId}/activity`),
         api.get(`/projects/${projectId}/visits/summary`).catch(() => ({
           data: { totals: {}, byEngineer: [], byMonth: [] },
         })),
+        api.get(`/projects/${projectId}/change-requests`).catch(() => ({ data: [] })),
+        api.get(`/projects/${projectId}/deliveries`).catch(() => ({ data: [] })),
+        api.get(`/projects/${projectId}/visits`, { params: { paginated: true, page: 1, limit: 20 } }).catch(() => ({ data: { data: [] } })),
       ]);
       setSelectedProjectDashboard(dashboardRes.data);
       setSelectedProjectActivity(activityRes.data || []);
       setSelectedProjectVisitSummary(visitSummaryRes.data || { totals: {}, byEngineer: [], byMonth: [] });
+      setAdminCrs(crRes.data || []);
+      setAdminDeliveries(deliveryRes.data || []);
+      setAdminVisits(Array.isArray(visitsRes.data) ? visitsRes.data : visitsRes.data.data || []);
+      setAdminProjectContacts(dashboardRes.data?.contacts || []);
+      setAdminProjectClientIds(dashboardRes.data?.project?.assigned_client_ids || []);
       const driveRes = await api.get(`/projects/${projectId}/drive-files`).catch(() => ({ data: [] }));
       setSelectedProjectDriveFiles(driveRes.data || []);
     } finally {
@@ -216,6 +267,37 @@ export default function AdminView() {
   }, [selectedProjectId]);
 
   const openCrCount = useMemo(() => projects.filter((p) => p.has_open_cr).length, [projects]);
+
+  const adminOpenCr = useMemo(() => adminCrs.find((c) => c.status === "draft" || c.status === "pending"), [adminCrs]);
+  const adminGrouped = useMemo(() => {
+    const map = new Map();
+    for (const row of selectedProjectDashboard?.bom || []) {
+      const floor = row.floor_label || "Unassigned";
+      if (!map.has(floor)) map.set(floor, []);
+      map.get(floor).push(row);
+    }
+    return Array.from(map.entries());
+  }, [selectedProjectDashboard]);
+  const adminSelectedDeliveryBom = useMemo(
+    () => (selectedProjectDashboard?.bom || []).find((b) => b.item_id === adminDeliverySelector.itemId),
+    [selectedProjectDashboard?.bom, adminDeliverySelector.itemId]
+  );
+  const adminSelectedModel = useMemo(() => items.find((i) => i.id === adminSelector.itemId), [items, adminSelector.itemId]);
+
+  useEffect(() => {
+    if (adminSelectedModel) setAdminRate(Number(adminSelectedModel.default_rate || 0));
+  }, [adminSelectedModel]);
+
+  useEffect(() => {
+    if (!adminOpenCr?.id) {
+      setAdminCrDiff({ diff: [], summary: { totalDeltaQty: 0 } });
+      return;
+    }
+    api.get(`/change-requests/${adminOpenCr.id}/diff`)
+      .then((res) => setAdminCrDiff(res.data))
+      .catch(() => setAdminCrDiff({ diff: [], summary: { totalDeltaQty: 0 } }));
+  }, [adminOpenCr?.id, selectedProjectDashboard?.bom?.length]);
+
   const filteredPT = productTypes.filter((x) => x.category_id === itemForm.categoryId);
   const productTypePageSize = 50;
   const productTypeTotalPages = Math.max(1, Math.ceil(productTypes.length / productTypePageSize));
@@ -223,6 +305,113 @@ export default function AdminView() {
     const start = (productTypePage - 1) * productTypePageSize;
     return productTypes.slice(start, start + productTypePageSize);
   }, [productTypes, productTypePage]);
+
+  async function adminCreateCr() {
+    if (!selectedProjectId) return;
+    await api.post(`/projects/${selectedProjectId}/change-requests`);
+    setAdminToast({ open: true, severity: "success", text: "Change request created" });
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminAddCrItem() {
+    if (!adminOpenCr?.id || !adminCrSelector.itemId) return;
+    const current = selectedProjectDashboard?.bom?.find((x) => x.item_id === adminCrSelector.itemId);
+    await api.post(`/change-requests/${adminOpenCr.id}/items`, {
+      itemId: adminCrSelector.itemId,
+      changeType: adminCrChangeType,
+      oldQuantity: current ? Number(current.quantity) : null,
+      newQuantity: adminCrChangeType === "delete" ? null : Number(adminCrQty),
+      floorLabel: adminCrFloorLabel || "Unassigned",
+      locationDescription: adminCrLocationDescription || "",
+    });
+    setAdminToast({ open: true, severity: "success", text: "CR delta added" });
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminSubmitCr() {
+    if (!adminOpenCr?.id) return;
+    await api.post(`/change-requests/${adminOpenCr.id}/submit`);
+    setAdminToast({ open: true, severity: "success", text: "CR submitted" });
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminApproveCr() {
+    if (!adminOpenCr?.id) return;
+    await api.post(`/change-requests/${adminOpenCr.id}/approve`);
+    setAdminToast({ open: true, severity: "success", text: "CR approved" });
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminRejectCr() {
+    if (!adminOpenCr?.id) return;
+    await api.post(`/change-requests/${adminOpenCr.id}/reject`);
+    setAdminToast({ open: true, severity: "success", text: "CR rejected" });
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminAddBomItem() {
+    if (!adminOpenCr?.id || !adminSelector.itemId) return;
+    await api.post(`/change-requests/${adminOpenCr.id}/items`, {
+      itemId: adminSelector.itemId,
+      changeType: "add",
+      oldQuantity: null,
+      newQuantity: Number(adminQty),
+      floorLabel: adminFloorLabel || "Unassigned",
+      locationDescription: adminLocationDescription || "",
+    });
+    setAdminOpenAdd(false);
+    setAdminSelector({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+    setAdminQty(1);
+    setAdminRate(0);
+    setAdminFloorLabel("Unassigned");
+    setAdminLocationDescription("");
+    setAdminToast({ open: true, severity: "success", text: "Added to CR diff" });
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminLogDelivery() {
+    const itemId = adminDeliverySelector.itemId;
+    if (!selectedProjectId || !itemId) return;
+    let photoUrl;
+    if (adminDeliveryPhotoFile) {
+      const fd = new FormData();
+      fd.append("photo", adminDeliveryPhotoFile);
+      const uploaded = await api.post("/uploads/photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      photoUrl = uploaded.data.photoUrl;
+    }
+    await api.post(`/projects/${selectedProjectId}/deliveries`, {
+      itemId,
+      quantity: Number(adminDeliveryQty),
+      notes: adminDeliveryNotes,
+      photoUrl,
+    });
+    setAdminToast({ open: true, severity: "success", text: "Delivery logged" });
+    setAdminDeliverySelector({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
+    setAdminDeliveryQty(1);
+    setAdminDeliveryNotes("");
+    setAdminDeliveryPhotoFile(null);
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminLogVisit() {
+    if (!selectedProjectId) return;
+    await api.post(`/projects/${selectedProjectId}/visits`, { notes: adminVisitNotes || "" });
+    setAdminVisitNotes("");
+    setAdminToast({ open: true, severity: "success", text: "Site visit logged" });
+    await loadProjectDetails(selectedProjectId);
+  }
+  async function adminSaveContacts() {
+    if (!selectedProjectId) return;
+    await api.put(`/projects/${selectedProjectId}/contacts`, {
+      contacts: adminProjectContacts.map((c) => ({
+        roleName: c.roleName || c.role_name || "",
+        contactName: c.contactName || c.contact_name || "",
+        phone: c.phone || "",
+        email: c.email || "",
+        notes: c.notes || "",
+      })),
+    });
+    setAdminToast({ open: true, severity: "success", text: "Contacts updated" });
+  }
+  async function adminSaveProjectClientMapping() {
+    if (!selectedProjectId) return;
+    await api.patch(`/projects/${selectedProjectId}`, { clientUserIds: adminProjectClientIds });
+    setAdminToast({ open: true, severity: "success", text: "Client mapping updated" });
+    await loadProjectDetails(selectedProjectId);
+  }
 
   async function createCategory() {
     await api.post("/admin/categories", {
@@ -495,6 +684,7 @@ export default function AdminView() {
         {notice ? <Alert sx={{ mt: 1.5 }} severity="info">{notice}</Alert> : null}
 
         {tab === 0 && (
+          <>
           <Paper sx={{ p: 2, mt: 1.5, overflowX: "auto" }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" useFlexGap>
               <Typography variant="h6">Projects</Typography>
@@ -689,7 +879,7 @@ export default function AdminView() {
                       <TableRow>
                         <TableCell colSpan={7} sx={{ p: 0, borderBottom: selectedProjectId === p.id ? undefined : 0 }}>
                           <Collapse in={selectedProjectId === p.id} timeout="auto" unmountOnExit>
-                            <Box sx={{ p: 1.5, bgcolor: "background.default" }}>
+                            <Box id={`admin-dashboard-${p.id}`} sx={{ p: 1.5, bgcolor: "background.default" }}>
                               {projectDetailsLoading ? (
                                 <Typography variant="body2" color="text.secondary">Loading project details...</Typography>
                               ) : selectedProjectDashboard?.project?.id === p.id ? (
@@ -827,6 +1017,19 @@ export default function AdminView() {
                                       <Typography variant="caption" color="text.secondary">No activity found.</Typography>
                                     ) : null}
                                   </Stack>
+                                  <Divider sx={{ my: 1 }} />
+                                  <Button
+                                    size="small"
+                                    variant="contained"
+                                    onClick={() => {
+                                      setSelectedProjectId(p.id);
+                                      setTimeout(() => {
+                                        document.getElementById('admin-project-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                      }, 200);
+                                    }}
+                                  >
+                                    Open In Dashboard
+                                  </Button>
                                 </>
                               ) : (
                                 <Typography variant="body2" color="text.secondary">Loading project details...</Typography>
@@ -844,6 +1047,475 @@ export default function AdminView() {
               Showing {projects.length} of {projectPagination.total} projects.
             </Typography>
           </Paper>
+
+          {selectedProjectId && selectedProjectDashboard?.project?.id === selectedProjectId && (
+            <Paper id="admin-project-dashboard" sx={{ p: 2.2, mt: 2 }}>
+              {/* Header — project selector + download report (mirrors PM) */}
+              <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }} justifyContent="space-between">
+                <Typography variant="h6">Project Dashboard</Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                  <FormControl size="small" sx={{ minWidth: { sm: 260 }, width: { xs: "100%", sm: "auto" } }}>
+                    <InputLabel>Project</InputLabel>
+                    <Select label="Project" value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
+                      {projects.map((p) => (
+                        <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="outlined"
+                    sx={{ width: { xs: "100%", sm: "auto" } }}
+                    disabled={!selectedProjectId}
+                    onClick={async () => {
+                      const res = await api.get(`/projects/${selectedProjectId}/report.pdf`, { responseType: "blob" });
+                      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `inka_report_${selectedProjectId}.pdf`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                  >
+                    Download Report
+                  </Button>
+                </Stack>
+              </Stack>
+
+              {/* Summary chips — same order as PM */}
+              <Stack direction="row" spacing={1} sx={{ mt: 1.2 }} flexWrap="wrap" useFlexGap>
+                <Chip label={`Open CR: ${adminOpenCr ? "Yes" : "No"}`} color={adminOpenCr ? "warning" : "success"} />
+                <Chip label={`Total BOM Value: INR ${Number(selectedProjectDashboard.summary?.total_scope_value || 0).toLocaleString()}`} color="primary" variant="outlined" />
+                <Chip label={`Delivered Value: INR ${Number(selectedProjectDashboard.summary?.total_delivered_value || 0).toLocaleString()}`} color="warning" variant="outlined" />
+                <Chip label={`Balance: INR ${Number(selectedProjectDashboard.summary?.total_balance_value || 0).toLocaleString()}`} color="secondary" variant="outlined" />
+                <Chip label={`Visits: ${Number(selectedProjectDashboard.summary?.visit_count || 0)}`} color="info" variant="outlined" />
+              </Stack>
+
+              {projectDetailsLoading ? (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Loading project details...</Typography>
+              ) : (
+                <Paper sx={{ mt: 1.4, p: 1.4, bgcolor: "background.paper" }}>
+                  {/* Project info grid */}
+                  <Grid container spacing={1}>
+                    <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Project</Typography><Typography variant="body2">{selectedProjectDashboard.project.name}</Typography></Grid>
+                    <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Client</Typography><Typography variant="body2">{selectedProjectDashboard.project.client_name}</Typography></Grid>
+                    <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Location</Typography><Typography variant="body2">{selectedProjectDashboard.project.location}</Typography></Grid>
+                    <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Status</Typography><Typography variant="body2">{selectedProjectDashboard.project.status}</Typography></Grid>
+                  </Grid>
+
+                  {selectedProjectDashboard.project.drive_link && (
+                    <Button sx={{ mt: 1 }} size="small" variant="outlined" onClick={() => window.open(selectedProjectDashboard.project.drive_link, "_blank", "noopener,noreferrer")}>
+                      Open Drive Link
+                    </Button>
+                  )}
+
+                  {/* Drive upload */}
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }} alignItems={{ md: "center" }}>
+                    <Button variant="outlined" component="label" size="small">
+                      {selectedProjectUploadFile ? `Selected: ${selectedProjectUploadFile.name}` : "Select File For Drive"}
+                      <input hidden type="file" onChange={(e) => setSelectedProjectUploadFile(e.target.files?.[0] || null)} />
+                    </Button>
+                    <Button size="small" variant="contained" disabled={!selectedProjectUploadFile || selectedProjectUploading} onClick={() => uploadProjectDriveFile(selectedProjectId)}>
+                      {selectedProjectUploading ? "Uploading..." : "Upload To Google Drive"}
+                    </Button>
+                  </Stack>
+
+                  {/* Drive files */}
+                  {selectedProjectDriveFiles.length > 0 && (
+                    <Stack spacing={0.5} sx={{ mt: 1 }}>
+                      <Typography variant="caption" color="text.secondary">Drive Files</Typography>
+                      {selectedProjectDriveFiles.slice(0, 8).map((f) => (
+                        <Button key={f.id} size="small" variant="text" sx={{ justifyContent: "flex-start" }} onClick={() => window.open(f.webViewLink || f.webContentLink, "_blank", "noopener,noreferrer")}>
+                          {f.name}
+                        </Button>
+                      ))}
+                    </Stack>
+                  )}
+
+                  {/* Mapped Clients */}
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1.1 }} alignItems={{ md: "center" }}>
+                    <FormControl size="small" sx={{ minWidth: 300 }}>
+                      <InputLabel>Mapped Clients</InputLabel>
+                      <Select multiple label="Mapped Clients" value={adminProjectClientIds} onChange={(e) => setAdminProjectClientIds(e.target.value)}>
+                        {clientUsers.map((u) => (
+                          <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <Button variant="outlined" onClick={() => adminSaveProjectClientMapping().catch(() => setAdminToast({ open: true, severity: "error", text: "Save mapping failed" }))}>Save Client Mapping</Button>
+                  </Stack>
+
+                  {/* Project Contacts */}
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="caption" color="text.secondary">Project Contacts</Typography>
+                  <Stack spacing={0.8} sx={{ mt: 0.8 }}>
+                    {adminProjectContacts.map((c, idx) => (
+                      <Stack key={`contact-${idx}`} direction={{ xs: "column", md: "row" }} spacing={1}>
+                        <TextField size="small" label="Role" value={c.roleName || c.role_name || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, roleName: e.target.value } : x))} />
+                        <TextField size="small" label="Name" value={c.contactName || c.contact_name || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, contactName: e.target.value } : x))} />
+                        <TextField size="small" label="Phone" value={c.phone || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, phone: e.target.value } : x))} />
+                        <TextField size="small" label="Email" value={c.email || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, email: e.target.value } : x))} />
+                        <Button color="error" onClick={() => setAdminProjectContacts((prev) => prev.filter((_, i) => i !== idx))}>Remove</Button>
+                      </Stack>
+                    ))}
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                      <Button size="small" variant="outlined" onClick={() => setAdminProjectContacts((prev) => [...prev, { roleName: "Civil Engineer", contactName: "", phone: "", email: "", notes: "" }])}>Add Contact</Button>
+                      <Button size="small" variant="contained" onClick={() => adminSaveContacts().catch(() => setAdminToast({ open: true, severity: "error", text: "Save contacts failed" }))}>Save Contacts</Button>
+                    </Stack>
+                  </Stack>
+
+                  {/* Log Site Visit */}
+                  <Divider sx={{ my: 1 }} />
+                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
+                    <TextField size="small" label="Visit Notes" value={adminVisitNotes} onChange={(e) => setAdminVisitNotes(e.target.value)} fullWidth />
+                    <Button variant="contained" onClick={() => adminLogVisit().catch(() => setAdminToast({ open: true, severity: "error", text: "Log visit failed" }))}>Log Site Visit</Button>
+                  </Stack>
+                  <Stack spacing={0.4} sx={{ mt: 0.8 }}>
+                    {adminVisits.slice(0, 5).map((v) => (
+                      <Typography key={v.id} variant="caption" color="text.secondary">
+                        {new Date(v.created_at).toLocaleString()} | {v.engineer_name || "Engineer"} | {v.notes || "-"}
+                      </Typography>
+                    ))}
+                  </Stack>
+
+                  {/* Recent Activity */}
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="caption" color="text.secondary">Recent Activity</Typography>
+                  <Stack spacing={0.6} sx={{ mt: 0.5 }}>
+                    {selectedProjectActivity.slice(0, 4).map((a) => (
+                      <Typography key={a.id} variant="caption">
+                        {a.action_type} | {new Date(a.created_at).toLocaleString()}
+                      </Typography>
+                    ))}
+                  </Stack>
+                </Paper>
+              )}
+            </Paper>
+          )}
+
+          {selectedProjectId && selectedProjectDashboard?.project?.id === selectedProjectId && (
+            <>
+            <Paper sx={{ p: 1, mt: 2 }}>
+              <Tabs value={adminInnerTab} onChange={(_, v) => setAdminInnerTab(v)} variant="scrollable" allowScrollButtonsMobile scrollButtons="auto">
+                <Tab label="BOM" />
+                <Tab label="Change Requests" />
+                <Tab label="Deliveries" />
+                <Tab label="Visits Analytics" />
+                <Tab label="Activity Feed" />
+              </Tabs>
+            </Paper>
+
+            {projectDetailsLoading && <CircularProgress sx={{ mt: 2 }} />}
+
+            {adminInnerTab === 0 && (
+              <Zoom in timeout={350}>
+                <Box sx={{ mt: 2 }}>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" sx={{ mb: 1.5 }}>
+                    <Typography variant="h6">Structured BOM</Typography>
+                    <Button startIcon={<AddIcon />} variant="contained" disabled={!adminOpenCr} onClick={() => setAdminOpenAdd(true)}>
+                      Add Item via CR
+                    </Button>
+                  </Stack>
+                  {adminGrouped.map(([floor, rows]) => (
+                    <Accordion key={floor} sx={{ mb: 1 }} defaultExpanded>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography sx={{ fontWeight: 600 }}>Floor: {floor}</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Grid container spacing={1}>
+                          {rows.map((r) => (
+                            <Grid size={{ xs: 12, md: 6 }} key={r.id}>
+                              <Paper sx={{ p: 1.5, border: `1px solid ${theme.palette.divider}` }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>{r.brand_name} {r.model_number}</Typography>
+                                <Typography variant="caption" color="text.secondary">{r.product_type_name}</Typography>
+                                <Typography variant="caption" display="block" color="text.secondary">Location: {r.location_description || "-"}</Typography>
+                                <Divider sx={{ my: 1 }} />
+                                <Stack direction="row" spacing={1}>
+                                  <Chip label={`Approved ${r.quantity}`} size="small" color="primary" />
+                                  <Chip label={`Delivered ${r.delivered_quantity}`} size="small" color="success" />
+                                  <Chip label={`Balance ${Number(r.quantity) - Number(r.delivered_quantity)}`} size="small" color="warning" />
+                                </Stack>
+                              </Paper>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </AccordionDetails>
+                    </Accordion>
+                  ))}
+                  {!adminGrouped.length && <Typography variant="body2" color="text.secondary">No BOM items yet.</Typography>}
+                </Box>
+              </Zoom>
+            )}
+
+            {adminInnerTab === 1 && (
+              <Paper sx={{ mt: 2, p: 2 }}>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" alignItems={{ sm: "center" }} sx={{ mb: 1.5 }}>
+                  <Typography variant="h6">Single Change Request Governance</Typography>
+                  {!adminOpenCr ? (
+                    <Button variant="contained" startIcon={<CompareArrowsIcon />} onClick={() => adminCreateCr().catch(() => setAdminToast({ open: true, severity: "error", text: "Create CR failed" }))} disabled={!selectedProjectId}>
+                      Create Change Request
+                    </Button>
+                  ) : (
+                    <Chip label={`CR ${adminOpenCr.id.slice(0, 8)} | ${adminOpenCr.status.toUpperCase()}`} color="warning" />
+                  )}
+                </Stack>
+
+                {adminOpenCr && adminOpenCr.status !== "pending" && (
+                  <Stack spacing={1.5}>
+                    <HierarchySelector
+                      categories={categories}
+                      productTypes={productTypes}
+                      brands={brands}
+                      items={items}
+                      value={adminCrSelector}
+                      onChange={(change) => setAdminCrSelector((prev) => ({ ...prev, ...change }))}
+                    />
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1.2}>
+                      <FormControl fullWidth>
+                        <InputLabel>Change Type</InputLabel>
+                        <Select value={adminCrChangeType} label="Change Type" onChange={(e) => setAdminCrChangeType(e.target.value)}>
+                          <MenuItem value="add">Add</MenuItem>
+                          <MenuItem value="modify">Modify Quantity</MenuItem>
+                          <MenuItem value="delete">Delete</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField type="number" label="New Quantity" value={adminCrQty} onChange={(e) => setAdminCrQty(Number(e.target.value || 0))} disabled={adminCrChangeType === "delete"} fullWidth />
+                      <TextField label="Floor" value={adminCrFloorLabel} onChange={(e) => setAdminCrFloorLabel(e.target.value)} fullWidth />
+                      <TextField label="Location Description" value={adminCrLocationDescription} onChange={(e) => setAdminCrLocationDescription(e.target.value)} fullWidth />
+                      <Button variant="contained" onClick={() => adminAddCrItem().catch(() => setAdminToast({ open: true, severity: "error", text: "Add CR item failed" }))}>Add Delta</Button>
+                      <Button variant="outlined" onClick={() => adminSubmitCr().catch(() => setAdminToast({ open: true, severity: "error", text: "Submit CR failed" }))}>Submit CR</Button>
+                    </Stack>
+                  </Stack>
+                )}
+
+                {adminOpenCr && adminOpenCr.status === "pending" && (
+                  <Stack direction="row" spacing={1.2} sx={{ mt: 1.2 }}>
+                    <Button variant="contained" color="success" onClick={() => adminApproveCr().catch(() => setAdminToast({ open: true, severity: "error", text: "Approve failed" }))}>Approve CR</Button>
+                    <Button variant="outlined" color="error" onClick={() => adminRejectCr().catch(() => setAdminToast({ open: true, severity: "error", text: "Reject failed" }))}>Reject CR</Button>
+                  </Stack>
+                )}
+
+                <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                  <Grid size={{ xs: 12, md: 7 }}>
+                    <Typography variant="body2">CR changes are delta-based and applied only on approval.</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 5 }}>
+                    <Paper sx={{ p: 1.5, bgcolor: "action.hover" }}>
+                      <Typography variant="subtitle2">Live Diff Panel</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Total Scope Qty Delta: {adminCrDiff.summary?.totalDeltaQty ?? 0}
+                      </Typography>
+                      <Table size="small" sx={{ mt: 1 }}>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Model</TableCell>
+                            <TableCell>Type</TableCell>
+                            <TableCell>Floor</TableCell>
+                            <TableCell align="right">Before</TableCell>
+                            <TableCell align="right">After</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(adminCrDiff.diff || []).map((d) => (
+                            <TableRow key={`${d.itemId}-${d.changeType}`}>
+                              <TableCell>{d.modelNumber}</TableCell>
+                              <TableCell>{d.changeType}</TableCell>
+                              <TableCell>{d.floorLabel || "Unassigned"}</TableCell>
+                              <TableCell align="right">{d.beforeQty}</TableCell>
+                              <TableCell align="right">{d.afterQty}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Paper>
+            )}
+
+            {adminInnerTab === 2 && (
+              <Paper sx={{ mt: 2, p: 2 }}>
+                <Typography variant="h6">Site Deliveries</Typography>
+                <Grid container spacing={1.2} sx={{ mt: 1.2 }}>
+                  <Grid size={{ xs: 12 }}>
+                    <HierarchySelector
+                      categories={categories}
+                      productTypes={productTypes}
+                      brands={brands}
+                      items={items.filter((x) => (selectedProjectDashboard?.bom || []).some((b) => b.item_id === x.id))}
+                      value={adminDeliverySelector}
+                      onChange={(change) => setAdminDeliverySelector((prev) => ({ ...prev, ...change }))}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 2 }}>
+                    <TextField type="number" label="Delivered Qty" value={adminDeliveryQty} onChange={(e) => setAdminDeliveryQty(Number(e.target.value || 0))} fullWidth />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField label="Notes" value={adminDeliveryNotes} onChange={(e) => setAdminDeliveryNotes(e.target.value)} fullWidth />
+                  </Grid>
+                  <Grid size={{ xs: 6, md: 2 }}>
+                    <Button fullWidth variant="outlined" component="label">
+                      {adminDeliveryPhotoFile ? "Photo Selected" : "Upload Photo"}
+                      <input hidden type="file" accept="image/*" onChange={(e) => setAdminDeliveryPhotoFile(e.target.files?.[0] || null)} />
+                    </Button>
+                  </Grid>
+                  <Grid size={{ xs: 6, md: 2 }}>
+                    <Button fullWidth variant="contained" onClick={() => adminLogDelivery().catch(() => setAdminToast({ open: true, severity: "error", text: "Log delivery failed" }))}>Log</Button>
+                  </Grid>
+                </Grid>
+                {adminSelectedDeliveryBom && (
+                  <Stack direction="row" spacing={1} sx={{ mt: 1.2 }}>
+                    <Chip label={`Approved ${adminSelectedDeliveryBom.quantity}`} size="small" />
+                    <Chip label={`Previously Delivered ${adminSelectedDeliveryBom.delivered_quantity}`} size="small" color="success" />
+                    <Chip label={`Balance ${Number(adminSelectedDeliveryBom.quantity) - Number(adminSelectedDeliveryBom.delivered_quantity)}`} size="small" color="warning" />
+                  </Stack>
+                )}
+                <Stack spacing={1} sx={{ mt: 2 }}>
+                  {adminDeliveries.slice(0, 8).map((d) => (
+                    <Paper key={d.id} sx={{ p: 1.2, border: `1px solid ${theme.palette.divider}` }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{d.full_name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Qty {d.quantity} | {new Date(d.created_at).toLocaleString()} | {d.engineer_name || "Unknown"}
+                      </Typography>
+                      <Typography variant="caption" display="block" color="text.secondary">
+                        Notes: {d.notes || "-"} | Photo: {d.photo_url || "-"}
+                      </Typography>
+                    </Paper>
+                  ))}
+                  {!adminDeliveries.length && <Typography variant="body2" color="text.secondary">No deliveries logged yet.</Typography>}
+                </Stack>
+              </Paper>
+            )}
+
+            {adminInnerTab === 3 && (
+              <Paper sx={{ mt: 2, p: 2 }}>
+                <Typography variant="h6">Site Visit Analytics</Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+                  <Chip label={`Total Visits: ${Number(selectedProjectVisitSummary?.totals?.total_visits || 0)}`} color="primary" variant="outlined" />
+                  <Chip label={`Engineers Visited: ${Number(selectedProjectVisitSummary?.totals?.engineer_count || 0)}`} color="info" variant="outlined" />
+                  <Chip label={`First Visit: ${selectedProjectVisitSummary?.totals?.first_visit_date || "-"}`} variant="outlined" />
+                  <Chip label={`Last Visit: ${selectedProjectVisitSummary?.totals?.last_visit_date || "-"}`} variant="outlined" />
+                </Stack>
+                <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                      <Typography variant="subtitle2">Engineer-wise Visits</Typography>
+                      <Table size="small" sx={{ mt: 0.8 }}>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Engineer</TableCell>
+                            <TableCell align="right">Visit Count</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(selectedProjectVisitSummary?.byEngineer || []).map((r) => (
+                            <TableRow key={r.engineer_id || r.engineer_name}>
+                              <TableCell>{r.engineer_name}</TableCell>
+                              <TableCell align="right">{r.visit_count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Paper>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                      <Typography variant="subtitle2">Month-wise Visits</Typography>
+                      <Table size="small" sx={{ mt: 0.8 }}>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Month</TableCell>
+                            <TableCell align="right">Visit Count</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {(selectedProjectVisitSummary?.byMonth || []).map((r) => (
+                            <TableRow key={r.month_key}>
+                              <TableCell>{r.month_key}</TableCell>
+                              <TableCell align="right">{r.visit_count}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Paper>
+                  </Grid>
+                </Grid>
+                <Divider sx={{ my: 1.5 }} />
+                <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
+                  <TextField size="small" label="Visit Notes" value={adminVisitNotes} onChange={(e) => setAdminVisitNotes(e.target.value)} fullWidth />
+                  <Button variant="contained" onClick={() => adminLogVisit().catch(() => setAdminToast({ open: true, severity: "error", text: "Log visit failed" }))}>Log Site Visit</Button>
+                </Stack>
+                <Stack spacing={0.4} sx={{ mt: 0.8 }}>
+                  {adminVisits.slice(0, 5).map((v) => (
+                    <Typography key={v.id} variant="caption" color="text.secondary">
+                      {new Date(v.created_at).toLocaleString()} | {v.engineer_name || "Engineer"} | {v.notes || "-"}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Paper>
+            )}
+
+            {adminInnerTab === 4 && (
+              <Paper sx={{ mt: 2, p: 2 }}>
+                <Typography variant="h6">Immutable Activity Feed</Typography>
+                <Stack spacing={1} sx={{ mt: 1.2 }}>
+                  {selectedProjectActivity.slice(0, 20).map((a) => (
+                    <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
+                      </Typography>
+                      <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0, color: "text.secondary" }}>
+                        {JSON.stringify(a.metadata_json || {}, null, 2)}
+                      </Typography>
+                    </Paper>
+                  ))}
+                  {!selectedProjectActivity.length && <Typography variant="body2" color="text.secondary">No activity found.</Typography>}
+                </Stack>
+              </Paper>
+            )}
+
+            {/* Add BOM Item Dialog */}
+            <Dialog open={adminOpenAdd} onClose={() => setAdminOpenAdd(false)} fullWidth maxWidth="md">
+              <DialogTitle>Add BOM Item</DialogTitle>
+              <DialogContent>
+                <HierarchySelector
+                  categories={categories}
+                  productTypes={productTypes}
+                  brands={brands}
+                  items={items}
+                  value={adminSelector}
+                  onChange={(change) => setAdminSelector((prev) => ({ ...prev, ...change }))}
+                />
+                <Grid container spacing={1.2} sx={{ mt: 0.6 }}>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField type="number" label="Quantity" fullWidth value={adminQty} onChange={(e) => setAdminQty(Number(e.target.value || 0))} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField type="number" label="Rate" fullWidth value={adminRate} onChange={(e) => setAdminRate(Number(e.target.value || 0))} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField label="Unit" fullWidth value={adminSelectedModel?.unit_of_measure || "-"} disabled />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField label="Floor (GF / FF / etc)" fullWidth value={adminFloorLabel} onChange={(e) => setAdminFloorLabel(e.target.value)} />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 8 }}>
+                    <TextField label="Location Description" fullWidth value={adminLocationDescription} onChange={(e) => setAdminLocationDescription(e.target.value)} />
+                  </Grid>
+                </Grid>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setAdminOpenAdd(false)}>Cancel</Button>
+                <Button variant="contained" onClick={() => adminAddBomItem().catch(() => setAdminToast({ open: true, severity: "error", text: "Add BOM item failed" }))}>Save</Button>
+              </DialogActions>
+            </Dialog>
+
+            <Snackbar open={adminToast.open} autoHideDuration={2500} onClose={() => setAdminToast((p) => ({ ...p, open: false }))}>
+              <Alert severity={adminToast.severity}>{adminToast.text}</Alert>
+            </Snackbar>
+            </>
+          )}
+          </>
         )}
 
         {tab === 1 && (
@@ -1332,8 +2004,83 @@ export default function AdminView() {
         {tab === 7 && (
           <Paper sx={{ p: 2, mt: 1.5 }}>
             <Typography variant="h6">Reports</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Use Project Manager or Client screens to download project PDF reports. Admin report hub is enabled here for parity.
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+              Select a project to download its PDF report.
+            </Typography>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }}>
+              <FormControl size="small" sx={{ minWidth: 280 }}>
+                <InputLabel>Project</InputLabel>
+                <Select
+                  label="Project"
+                  value={selectedProjectId}
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                >
+                  {projects.map((p) => (
+                    <MenuItem key={p.id} value={p.id}>{p.name} — {p.client_name || "No client"}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                variant="contained"
+                disabled={!selectedProjectId}
+                onClick={async () => {
+                  if (!selectedProjectId) return;
+                  const res = await api.get(`/projects/${selectedProjectId}/report.pdf`, { responseType: "blob" });
+                  const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `inka_report_${selectedProjectId}.pdf`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                Download PDF Report
+              </Button>
+            </Stack>
+            {projects.length > 0 && (
+              <TableContainer className="admin-table-scroll" sx={{ mt: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Project</TableCell>
+                      <TableCell>Client</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Visits</TableCell>
+                      <TableCell>Download</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {projects.map((p) => (
+                      <TableRow key={p.id} hover>
+                        <TableCell>{p.name}</TableCell>
+                        <TableCell>{p.client_name || "-"}</TableCell>
+                        <TableCell><Chip label={p.status} size="small" /></TableCell>
+                        <TableCell>{Number(p.visit_count || 0)}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={async () => {
+                              const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
+                              const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `inka_report_${p.id}.pdf`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                          >
+                            PDF
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+              Showing {projects.length} of {projectPagination.total} projects on current page.
             </Typography>
           </Paper>
         )}
