@@ -150,6 +150,11 @@ export default function AdminView() {
   const [editClient, setEditClient] = useState({});
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
+  const [editProjectId, setEditProjectId] = useState("");
+  const [editProjectForm, setEditProjectForm] = useState({ name: "", clientId: "", clientName: "", location: "", driveLink: "", startDate: "", engineerIds: [], clientUserIds: [], categorySequenceMode: false });
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [deleteProjectId, setDeleteProjectId] = useState("");
   const [excelImportFile, setExcelImportFile] = useState(null);
   const [excelImporting, setExcelImporting] = useState(false);
   const [excelImportResult, setExcelImportResult] = useState(null);
@@ -634,6 +639,34 @@ export default function AdminView() {
     }
   }
 
+  async function saveAdminEditProject() {
+    if (!editProjectId) return;
+    await api.patch(`/projects/${editProjectId}`, {
+      name: editProjectForm.name || undefined,
+      clientId: editProjectForm.clientId || undefined,
+      clientName: editProjectForm.clientName || undefined,
+      location: editProjectForm.location || undefined,
+      driveLink: editProjectForm.driveLink || null,
+      startDate: editProjectForm.startDate || null,
+      engineerIds: editProjectForm.engineerIds,
+      clientUserIds: editProjectForm.clientUserIds,
+      categorySequenceMode: !!editProjectForm.categorySequenceMode,
+    });
+    setEditProjectOpen(false);
+    setNotice("Project updated");
+    await loadAll();
+  }
+
+  async function confirmAdminDeleteProject() {
+    if (!deleteProjectId) return;
+    await api.delete(`/projects/${deleteProjectId}`);
+    setDeleteProjectOpen(false);
+    setDeleteProjectId("");
+    setNotice("Project deleted");
+    if (selectedProjectId === deleteProjectId) setSelectedProjectId("");
+    await loadAll();
+  }
+
   return (
     <Fade in timeout={420}>
       <Box
@@ -865,15 +898,50 @@ export default function AdminView() {
                         <TableCell>{Number(p.visit_count || 0)}</TableCell>
                         <TableCell>{p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}</TableCell>
                         <TableCell>
-                          <Button
-                            size="small"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedProjectId((prev) => (prev === p.id ? "" : p.id));
-                            }}
-                          >
-                            {selectedProjectId === p.id ? "Close" : "Open"}
-                          </Button>
+                          <Stack direction="row" spacing={0.5}>
+                            <Button
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedProjectId((prev) => (prev === p.id ? "" : p.id));
+                              }}
+                            >
+                              {selectedProjectId === p.id ? "Close" : "Open"}
+                            </Button>
+                            <Button
+                              size="small"
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditProjectId(p.id);
+                                setEditProjectForm({
+                                  name: p.name || "",
+                                  clientId: p.client_id || "",
+                                  clientName: p.client_name || "",
+                                  location: p.location || "",
+                                  driveLink: p.drive_link || "",
+                                  startDate: p.start_date ? p.start_date.slice(0, 10) : "",
+                                  engineerIds: p.engineer_ids || [],
+                                  clientUserIds: p.client_user_ids || [],
+                                  categorySequenceMode: !!p.category_sequence_mode,
+                                });
+                                setEditProjectOpen(true);
+                              }}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteProjectId(p.id);
+                                setDeleteProjectOpen(true);
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </Stack>
                         </TableCell>
                       </TableRow>
                       <TableRow>
@@ -2168,6 +2236,97 @@ export default function AdminView() {
             )}
           </Paper>
         )}
+
+      <Dialog open={editProjectOpen} onClose={() => setEditProjectOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Edit Project</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={1.2} sx={{ mt: 0.2 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Project Name" size="small" fullWidth value={editProjectForm.name} onChange={(e) => setEditProjectForm((p) => ({ ...p, name: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Client Master (Optional)</InputLabel>
+                <Select
+                  label="Client Master (Optional)"
+                  value={editProjectForm.clientId}
+                  onChange={(e) => {
+                    const selected = clients.find((c) => c.id === e.target.value);
+                    setEditProjectForm((p) => ({
+                      ...p,
+                      clientId: e.target.value,
+                      clientName: selected?.name || p.clientName,
+                      location: selected?.location || p.location,
+                    }));
+                  }}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {clients.filter((c) => c.is_active).map((c) => (
+                    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Client Name" size="small" fullWidth value={editProjectForm.clientName} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientName: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Location" size="small" fullWidth value={editProjectForm.location} onChange={(e) => setEditProjectForm((p) => ({ ...p, location: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Drive Link (Optional)" size="small" fullWidth value={editProjectForm.driveLink} onChange={(e) => setEditProjectForm((p) => ({ ...p, driveLink: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Start Date" type="date" size="small" fullWidth slotProps={{ inputLabel: { shrink: true } }} value={editProjectForm.startDate} onChange={(e) => setEditProjectForm((p) => ({ ...p, startDate: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Assigned Engineers</InputLabel>
+                <Select multiple label="Assigned Engineers" value={editProjectForm.engineerIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, engineerIds: e.target.value }))}>
+                  {engineers.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Assigned Client Users</InputLabel>
+                <Select multiple label="Assigned Client Users" value={editProjectForm.clientUserIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientUserIds: e.target.value }))}>
+                  {clientUsers.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Category Sequence Mode</InputLabel>
+                <Select label="Category Sequence Mode" value={editProjectForm.categorySequenceMode ? "yes" : "no"} onChange={(e) => setEditProjectForm((p) => ({ ...p, categorySequenceMode: e.target.value === "yes" }))}>
+                  <MenuItem value="no">Disabled</MenuItem>
+                  <MenuItem value="yes">Enabled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditProjectOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={() => saveAdminEditProject().catch(() => setNotice("Update project failed"))}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteProjectOpen} onClose={() => setDeleteProjectOpen(false)} maxWidth="xs">
+        <DialogTitle>Delete Project</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this project? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteProjectOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={() => confirmAdminDeleteProject().catch(() => setNotice("Delete project failed"))}>Delete</Button>
+        </DialogActions>
+      </Dialog>
+
       </Box>
     </Fade>
   );

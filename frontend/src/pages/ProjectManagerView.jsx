@@ -121,6 +121,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   const [clientPagination, setClientPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const canEditScope = role === "admin" || role === "project_manager";
   const [outerTab, setOuterTab] = useState(0);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
+  const [editProjectId, setEditProjectId] = useState("");
+  const [editProjectForm, setEditProjectForm] = useState({ name: "", clientId: "", clientName: "", location: "", driveLink: "", startDate: "", engineerIds: [], clientUserIds: [], categorySequenceMode: false });
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [deleteProjectId, setDeleteProjectId] = useState("");
 
   const openCr = useMemo(() => crs.find((c) => c.status === "draft" || c.status === "pending"), [crs]);
   const openCrCount = useMemo(() => projects.filter((p) => p.has_open_cr).length, [projects]);
@@ -344,6 +349,34 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     await fetchProjects();
   }
 
+  async function saveEditProject() {
+    if (!editProjectId) return;
+    await api.patch(`/projects/${editProjectId}`, {
+      name: editProjectForm.name || undefined,
+      clientId: editProjectForm.clientId || undefined,
+      clientName: editProjectForm.clientName || undefined,
+      location: editProjectForm.location || undefined,
+      driveLink: editProjectForm.driveLink || null,
+      startDate: editProjectForm.startDate || null,
+      engineerIds: editProjectForm.engineerIds,
+      clientUserIds: editProjectForm.clientUserIds,
+      categorySequenceMode: !!editProjectForm.categorySequenceMode,
+    });
+    setEditProjectOpen(false);
+    setToast({ open: true, severity: "success", text: "Project updated" });
+    await fetchProjects();
+  }
+
+  async function confirmDeleteProject() {
+    if (!deleteProjectId) return;
+    await api.delete(`/projects/${deleteProjectId}`);
+    setDeleteProjectOpen(false);
+    setDeleteProjectId("");
+    setToast({ open: true, severity: "success", text: "Project deleted" });
+    if (projectId === deleteProjectId) setProjectId("");
+    await fetchProjects();
+  }
+
   async function saveProjectClientMapping() {
     if (!projectId) return;
     await api.patch(`/projects/${projectId}`, { clientUserIds: projectClientIds });
@@ -450,14 +483,17 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     <Fade in timeout={420}>
     <Box>
       <Grid container spacing={2.2} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
-          <KpiCard title="Total Projects" value={projects.length} subtitle="Portfolio visibility" />
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <KpiCard title="Total Projects" value={projectPagination.total || projects.length} subtitle="Portfolio visibility" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <KpiCard title="Open CRs" value={openCrCount} subtitle="Pending approvals" color="#dc2626" />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
-          <KpiCard title="Total Clients" value={clientMasters.length} subtitle="Client accounts" color="#2563eb" />
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <KpiCard title="Categories" value={masterData.categories.length} subtitle="Structured scope hierarchy" color="#2563eb" />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <KpiCard title="Item Master" value={masterData.items.length} subtitle="Model-level control" color="#f97316" />
         </Grid>
       </Grid>
 
@@ -509,6 +545,41 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                 <Typography variant="caption" display="block" color="text.secondary">
                   {p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}
                 </Typography>
+                <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
+                  <Button
+                    size="small"
+                    color="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditProjectId(p.id);
+                      setEditProjectForm({
+                        name: p.name || "",
+                        clientId: p.client_id || "",
+                        clientName: p.client_name || "",
+                        location: p.location || "",
+                        driveLink: p.drive_link || "",
+                        startDate: p.start_date ? p.start_date.slice(0, 10) : "",
+                        engineerIds: p.engineer_ids || [],
+                        clientUserIds: p.client_user_ids || [],
+                        categorySequenceMode: !!p.category_sequence_mode,
+                      });
+                      setEditProjectOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteProjectId(p.id);
+                      setDeleteProjectOpen(true);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Stack>
               </Paper>
             ))}
           </Stack>
@@ -544,16 +615,51 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                       <TableCell>{Number(p.visit_count || 0)}</TableCell>
                       <TableCell>{p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}</TableCell>
                       <TableCell>
-                        <Button
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProjectId(p.id);
-                            setOpenProjectRowId((prev) => (prev === p.id ? "" : p.id));
-                          }}
-                        >
-                          {openProjectRowId === p.id ? "Close" : "Open"}
-                        </Button>
+                        <Stack direction="row" spacing={0.5}>
+                          <Button
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProjectId(p.id);
+                              setOpenProjectRowId((prev) => (prev === p.id ? "" : p.id));
+                            }}
+                          >
+                            {openProjectRowId === p.id ? "Close" : "Open"}
+                          </Button>
+                          <Button
+                            size="small"
+                            color="primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditProjectId(p.id);
+                              setEditProjectForm({
+                                name: p.name || "",
+                                clientId: p.client_id || "",
+                                clientName: p.client_name || "",
+                                location: p.location || "",
+                                driveLink: p.drive_link || "",
+                                startDate: p.start_date ? p.start_date.slice(0, 10) : "",
+                                engineerIds: p.engineer_ids || [],
+                                clientUserIds: p.client_user_ids || [],
+                                categorySequenceMode: !!p.category_sequence_mode,
+                              });
+                              setEditProjectOpen(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteProjectId(p.id);
+                              setDeleteProjectOpen(true);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </Stack>
                       </TableCell>
                     </TableRow>
                     <TableRow>
@@ -1295,7 +1401,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               <TextField label="Drive Link (Optional)" fullWidth value={newProject.driveLink} onChange={(e) => setNewProject((p) => ({ ...p, driveLink: e.target.value }))} />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField type="date" label="Start Date" fullWidth InputLabelProps={{ shrink: true }} value={newProject.startDate} onChange={(e) => setNewProject((p) => ({ ...p, startDate: e.target.value }))} />
+              <TextField type="date" label="Start Date" fullWidth slotProps={{ inputLabel: { shrink: true } }} value={newProject.startDate} onChange={(e) => setNewProject((p) => ({ ...p, startDate: e.target.value }))} />
             </Grid>
             <Grid size={{ xs: 12, md: 8 }}>
               <FormControl fullWidth>
@@ -1345,6 +1451,96 @@ export default function ProjectManagerView({ masterData, role = "project_manager
         <DialogActions>
           <Button onClick={() => setOpenCreateProject(false)}>Cancel</Button>
           <Button variant="contained" onClick={createProject}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editProjectOpen} onClose={() => setEditProjectOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Edit Project</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={1.2} sx={{ mt: 0.2 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Project Name" fullWidth value={editProjectForm.name} onChange={(e) => setEditProjectForm((p) => ({ ...p, name: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth>
+                <InputLabel>Client Master (Optional)</InputLabel>
+                <Select
+                  label="Client Master (Optional)"
+                  value={editProjectForm.clientId}
+                  onChange={(e) => {
+                    const selected = clientMasters.find((c) => c.id === e.target.value);
+                    setEditProjectForm((p) => ({
+                      ...p,
+                      clientId: e.target.value,
+                      clientName: selected?.name || p.clientName,
+                      location: selected?.location || p.location,
+                    }));
+                  }}
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {clientMasters.filter((c) => c.is_active).map((c) => (
+                    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Client Name" fullWidth value={editProjectForm.clientName} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientName: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Location" fullWidth value={editProjectForm.location} onChange={(e) => setEditProjectForm((p) => ({ ...p, location: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Drive Link (Optional)" fullWidth value={editProjectForm.driveLink} onChange={(e) => setEditProjectForm((p) => ({ ...p, driveLink: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField type="date" label="Start Date" fullWidth slotProps={{ inputLabel: { shrink: true } }} value={editProjectForm.startDate} onChange={(e) => setEditProjectForm((p) => ({ ...p, startDate: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth>
+                <InputLabel>Assigned Engineers</InputLabel>
+                <Select multiple label="Assigned Engineers" value={editProjectForm.engineerIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, engineerIds: e.target.value }))}>
+                  {engineers.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl fullWidth>
+                <InputLabel>Assigned Clients</InputLabel>
+                <Select multiple label="Assigned Clients" value={editProjectForm.clientUserIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientUserIds: e.target.value }))}>
+                  {clients.map((u) => (
+                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <FormControl fullWidth>
+                <InputLabel>Category Sequence Mode</InputLabel>
+                <Select label="Category Sequence Mode" value={editProjectForm.categorySequenceMode ? "yes" : "no"} onChange={(e) => setEditProjectForm((p) => ({ ...p, categorySequenceMode: e.target.value === "yes" }))}>
+                  <MenuItem value="no">Disabled</MenuItem>
+                  <MenuItem value="yes">Enabled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditProjectOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={() => saveEditProject().catch(() => setToast({ open: true, severity: "error", text: "Update project failed" }))}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteProjectOpen} onClose={() => setDeleteProjectOpen(false)} maxWidth="xs">
+        <DialogTitle>Delete Project</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this project? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteProjectOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={() => confirmDeleteProject().catch(() => setToast({ open: true, severity: "error", text: "Delete project failed" }))}>Delete</Button>
         </DialogActions>
       </Dialog>
 
