@@ -115,7 +115,6 @@ export default function AdminView() {
   const [adminDeliveryPhotoFile, setAdminDeliveryPhotoFile] = useState(null);
   const [adminToast, setAdminToast] = useState({ open: false, severity: "success", text: "" });
   const [adminProjectContacts, setAdminProjectContacts] = useState([]);
-  const [adminProjectClientIds, setAdminProjectClientIds] = useState([]);
 
   const [catForm, setCatForm] = useState({ name: "", sequenceOrder: 1, isActive: true });
   const [ptForm, setPtForm] = useState({ name: "", categoryId: "", isActive: true });
@@ -155,6 +154,8 @@ export default function AdminView() {
   const [editProjectForm, setEditProjectForm] = useState({ name: "", clientId: "", clientName: "", location: "", driveLink: "", startDate: "", engineerIds: [], clientUserIds: [], categorySequenceMode: false });
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deleteProjectId, setDeleteProjectId] = useState("");
+  const [viewMode, setViewMode] = useState("list");
+  const [statusFilter, setStatusFilter] = useState("");
   const [excelImportFile, setExcelImportFile] = useState(null);
   const [excelImporting, setExcelImporting] = useState(false);
   const [excelImportResult, setExcelImportResult] = useState(null);
@@ -172,7 +173,7 @@ export default function AdminView() {
 
   async function loadAll() {
     const [p, c, pt, b, i, u, a, cl, eng, cliUsers] = await Promise.all([
-      api.get("/projects", { params: { paginated: true, page: projectPage, limit: PAGE_SIZE } }),
+      api.get("/projects", { params: { paginated: true, page: projectPage, limit: PAGE_SIZE, ...(statusFilter ? { status: statusFilter } : {}) } }),
       api.get("/admin/categories"),
       api.get("/admin/product-types"),
       api.get("/admin/brands"),
@@ -235,7 +236,6 @@ export default function AdminView() {
       setAdminDeliveries(deliveryRes.data || []);
       setAdminVisits(Array.isArray(visitsRes.data) ? visitsRes.data : visitsRes.data.data || []);
       setAdminProjectContacts(dashboardRes.data?.contacts || []);
-      setAdminProjectClientIds(dashboardRes.data?.project?.assigned_client_ids || []);
       const driveRes = await api.get(`/projects/${projectId}/drive-files`).catch(() => ({ data: [] }));
       setSelectedProjectDriveFiles(driveRes.data || []);
     } finally {
@@ -263,7 +263,25 @@ export default function AdminView() {
 
   useEffect(() => {
     loadAll().catch(() => setNotice("Failed to load admin data"));
-  }, [projectPage, userPage, clientPage]);
+  }, [projectPage, userPage, clientPage, statusFilter]);
+
+  useEffect(() => {
+    function onPop() { setViewMode("list"); }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  function openProjectDashboard(pid) {
+    setSelectedProjectId(pid);
+    setTab(0);
+    setViewMode("dashboard");
+    window.history.pushState({ projectId: pid }, "", `/project/${pid}/dashboard`);
+  }
+
+  function goBackToList() {
+    setViewMode("list");
+    window.history.back();
+  }
 
   useEffect(() => {
     if (!selectedProjectId) return;
@@ -410,12 +428,6 @@ export default function AdminView() {
       })),
     });
     setAdminToast({ open: true, severity: "success", text: "Contacts updated" });
-  }
-  async function adminSaveProjectClientMapping() {
-    if (!selectedProjectId) return;
-    await api.patch(`/projects/${selectedProjectId}`, { clientUserIds: adminProjectClientIds });
-    setAdminToast({ open: true, severity: "success", text: "Client mapping updated" });
-    await loadProjectDetails(selectedProjectId);
   }
 
   async function createCategory() {
@@ -694,6 +706,7 @@ export default function AdminView() {
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Item Master" value={items.length} subtitle="Model-level control" color="#f97316" /></Grid>
         </Grid>
 
+        {viewMode === "list" && (
         <Paper sx={{ mt: 2, p: 1 }}>
           <Tabs
             value={tab}
@@ -713,21 +726,42 @@ export default function AdminView() {
             <Tab label="Settings" sx={{ px: isMobile ? 1.1 : 2 }} />
           </Tabs>
         </Paper>
+        )}
 
         {notice ? <Alert sx={{ mt: 1.5 }} severity="info">{notice}</Alert> : null}
 
         {tab === 0 && (
           <>
-          <Paper sx={{ p: 2, mt: 1.5, overflowX: "auto" }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" useFlexGap>
+          {viewMode === "dashboard" && (
+            <Button variant="outlined" sx={{ mb: 2, mt: 1.5 }} onClick={goBackToList}>
+              ← Back to Projects
+            </Button>
+          )}
+          {viewMode === "list" && (<Paper sx={{ p: 2, mt: 1.5, overflowX: "auto" }}>
+            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap spacing={1}>
               <Typography variant="h6">Projects</Typography>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={() => setShowCreateProject((v) => !v)}
-              >
-                {showCreateProject ? "Close" : "Create Project"}
-              </Button>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <FormControl size="small" sx={{ minWidth: 130 }}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    label="Status"
+                    value={statusFilter}
+                    onChange={(e) => { setStatusFilter(e.target.value); setProjectPage(1); }}
+                  >
+                    <MenuItem value="">All</MenuItem>
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="on_hold">On Hold</MenuItem>
+                    <MenuItem value="completed">Completed</MenuItem>
+                  </Select>
+                </FormControl>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => setShowCreateProject((v) => !v)}
+                >
+                  {showCreateProject ? "Close" : "Create Project"}
+                </Button>
+              </Stack>
             </Stack>
             <Collapse in={showCreateProject} timeout="auto" unmountOnExit>
               <Paper sx={{ p: 1.2, mt: 1.2, bgcolor: "action.hover" }}>
@@ -788,7 +822,7 @@ export default function AdminView() {
                       type="date"
                       size="small"
                       fullWidth
-                      InputLabelProps={{ shrink: true }}
+                      slotProps={{ inputLabel: { shrink: true } }}
                       value={projectForm.startDate}
                       onChange={(e) => setProjectForm((p) => ({ ...p, startDate: e.target.value }))}
                     />
@@ -967,7 +1001,21 @@ export default function AdminView() {
                                     </Grid>
                                     <Grid size={{ xs: 12, md: 3 }}>
                                       <Typography variant="caption" color="text.secondary">Status</Typography>
-                                      <Typography variant="body2">{selectedProjectDashboard.project.status}</Typography>
+                                      <Select
+                                        size="small"
+                                        value={selectedProjectDashboard.project.status}
+                                        onChange={async (e) => {
+                                          await api.patch(`/projects/${selectedProjectId}`, { status: e.target.value });
+                                          setAdminToast({ open: true, severity: "success", text: "Status updated" });
+                                          await loadProjectDetails(selectedProjectId);
+                                          await loadAll();
+                                        }}
+                                        sx={{ display: "block", mt: 0.3 }}
+                                      >
+                                        <MenuItem value="active">Active</MenuItem>
+                                        <MenuItem value="on_hold">On Hold</MenuItem>
+                                        <MenuItem value="completed">Completed</MenuItem>
+                                      </Select>
                                     </Grid>
                                   </Grid>
                                   {selectedProjectDashboard.project.drive_link ? (
@@ -1089,12 +1137,7 @@ export default function AdminView() {
                                   <Button
                                     size="small"
                                     variant="contained"
-                                    onClick={() => {
-                                      setSelectedProjectId(p.id);
-                                      setTimeout(() => {
-                                        document.getElementById('admin-project-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                      }, 200);
-                                    }}
+                                    onClick={() => openProjectDashboard(p.id)}
                                   >
                                     Open In Dashboard
                                   </Button>
@@ -1115,6 +1158,7 @@ export default function AdminView() {
               Showing {projects.length} of {projectPagination.total} projects.
             </Typography>
           </Paper>
+          )}
 
           {selectedProjectId && selectedProjectDashboard?.project?.id === selectedProjectId && (
             <Paper id="admin-project-dashboard" sx={{ p: 2.2, mt: 2 }}>
@@ -1167,7 +1211,24 @@ export default function AdminView() {
                     <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Project</Typography><Typography variant="body2">{selectedProjectDashboard.project.name}</Typography></Grid>
                     <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Client</Typography><Typography variant="body2">{selectedProjectDashboard.project.client_name}</Typography></Grid>
                     <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Location</Typography><Typography variant="body2">{selectedProjectDashboard.project.location}</Typography></Grid>
-                    <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Status</Typography><Typography variant="body2">{selectedProjectDashboard.project.status}</Typography></Grid>
+                    <Grid size={{ xs: 12, md: 3 }}>
+                      <Typography variant="caption" color="text.secondary">Status</Typography>
+                      <Select
+                        size="small"
+                        value={selectedProjectDashboard.project.status}
+                        onChange={async (e) => {
+                          await api.patch(`/projects/${selectedProjectId}`, { status: e.target.value });
+                          setAdminToast({ open: true, severity: "success", text: "Status updated" });
+                          await loadProjectDetails(selectedProjectId);
+                          await loadAll();
+                        }}
+                        sx={{ display: "block", mt: 0.3 }}
+                      >
+                        <MenuItem value="active">Active</MenuItem>
+                        <MenuItem value="on_hold">On Hold</MenuItem>
+                        <MenuItem value="completed">Completed</MenuItem>
+                      </Select>
+                    </Grid>
                   </Grid>
 
                   {selectedProjectDashboard.project.drive_link && (
@@ -1199,18 +1260,6 @@ export default function AdminView() {
                     </Stack>
                   )}
 
-                  {/* Mapped Clients */}
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1.1 }} alignItems={{ md: "center" }}>
-                    <FormControl size="small" sx={{ minWidth: 300 }}>
-                      <InputLabel>Mapped Clients</InputLabel>
-                      <Select multiple label="Mapped Clients" value={adminProjectClientIds} onChange={(e) => setAdminProjectClientIds(e.target.value)}>
-                        {clientUsers.map((u) => (
-                          <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <Button variant="outlined" onClick={() => adminSaveProjectClientMapping().catch(() => setAdminToast({ open: true, severity: "error", text: "Save mapping failed" }))}>Save Client Mapping</Button>
-                  </Stack>
 
                   {/* Project Contacts */}
                   <Divider sx={{ my: 1 }} />
@@ -1233,11 +1282,17 @@ export default function AdminView() {
 
                   {/* Log Site Visit */}
                   <Divider sx={{ my: 1 }} />
-                  <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
-                    <TextField size="small" label="Visit Notes" value={adminVisitNotes} onChange={(e) => setAdminVisitNotes(e.target.value)} fullWidth />
-                    <Button variant="contained" onClick={() => adminLogVisit().catch(() => setAdminToast({ open: true, severity: "error", text: "Log visit failed" }))}>Log Site Visit</Button>
-                  </Stack>
-                  <Stack spacing={0.4} sx={{ mt: 0.8 }}>
+                  <TextField
+                    label="Visit Notes"
+                    value={adminVisitNotes}
+                    onChange={(e) => setAdminVisitNotes(e.target.value)}
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    sx={{ mb: 1 }}
+                  />
+                  <Button variant="contained" onClick={() => adminLogVisit().catch(() => setAdminToast({ open: true, severity: "error", text: "Log visit failed" }))}>Log Site Visit</Button>
+                  <Stack spacing={0.4} sx={{ mt: 1 }}>
                     {adminVisits.slice(0, 5).map((v) => (
                       <Typography key={v.id} variant="caption" color="text.secondary">
                         {new Date(v.created_at).toLocaleString()} | {v.engineer_name || "Engineer"} | {v.notes || "-"}
@@ -1245,15 +1300,63 @@ export default function AdminView() {
                     ))}
                   </Stack>
 
-                  {/* Recent Activity */}
-                  <Divider sx={{ my: 1 }} />
-                  <Typography variant="caption" color="text.secondary">Recent Activity</Typography>
-                  <Stack spacing={0.6} sx={{ mt: 0.5 }}>
-                    {selectedProjectActivity.slice(0, 4).map((a) => (
-                      <Typography key={a.id} variant="caption">
-                        {a.action_type} | {new Date(a.created_at).toLocaleString()}
-                      </Typography>
+                  {/* Visit Analytics */}
+                  <Divider sx={{ my: 1.5 }} />
+                  <Typography variant="subtitle2" sx={{ mb: 0.8 }}>Visit Analytics</Typography>
+                  <Stack direction="row" spacing={1} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
+                    <Chip label={`Total Visits: ${Number(selectedProjectVisitSummary?.totals?.total_visits || 0)}`} color="primary" variant="outlined" size="small" />
+                    <Chip label={`Engineers: ${Number(selectedProjectVisitSummary?.totals?.engineer_count || 0)}`} color="info" variant="outlined" size="small" />
+                    <Chip label={`First Visit: ${selectedProjectVisitSummary?.totals?.first_visit_date || "-"}`} variant="outlined" size="small" />
+                    <Chip label={`Last Visit: ${selectedProjectVisitSummary?.totals?.last_visit_date || "-"}`} variant="outlined" size="small" />
+                  </Stack>
+                  <Grid container spacing={1.5} sx={{ mb: 1 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                        <Typography variant="caption" color="text.secondary">Engineer-wise Visits</Typography>
+                        <Table size="small" sx={{ mt: 0.5 }}>
+                          <TableHead><TableRow><TableCell>Engineer</TableCell><TableCell align="right">Visits</TableCell></TableRow></TableHead>
+                          <TableBody>
+                            {(selectedProjectVisitSummary?.byEngineer || []).map((r) => (
+                              <TableRow key={r.engineer_id || r.engineer_name}>
+                                <TableCell>{r.engineer_name}</TableCell>
+                                <TableCell align="right">{r.visit_count}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </Paper>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                        <Typography variant="caption" color="text.secondary">Month-wise Visits</Typography>
+                        <Table size="small" sx={{ mt: 0.5 }}>
+                          <TableHead><TableRow><TableCell>Month</TableCell><TableCell align="right">Visits</TableCell></TableRow></TableHead>
+                          <TableBody>
+                            {(selectedProjectVisitSummary?.byMonth || []).map((r) => (
+                              <TableRow key={r.month_key}>
+                                <TableCell>{r.month_key}</TableCell>
+                                <TableCell align="right">{r.visit_count}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+
+                  {/* Activity Feed */}
+                  <Divider sx={{ my: 1.5 }} />
+                  <Typography variant="subtitle2" sx={{ mb: 0.8 }}>Activity Feed</Typography>
+                  <Stack spacing={0.6}>
+                    {selectedProjectActivity.slice(0, 10).map((a) => (
+                      <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
+                        </Typography>
+                      </Paper>
                     ))}
+                    {!selectedProjectActivity.length && <Typography variant="body2" color="text.secondary">No activity yet.</Typography>}
                   </Stack>
                 </Paper>
               )}
@@ -1267,8 +1370,6 @@ export default function AdminView() {
                 <Tab label="BOM" />
                 <Tab label="Change Requests" />
                 <Tab label="Deliveries" />
-                <Tab label="Visits Analytics" />
-                <Tab label="Activity Feed" />
               </Tabs>
             </Paper>
 
@@ -1454,93 +1555,6 @@ export default function AdminView() {
               </Paper>
             )}
 
-            {adminInnerTab === 3 && (
-              <Paper sx={{ mt: 2, p: 2 }}>
-                <Typography variant="h6">Site Visit Analytics</Typography>
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
-                  <Chip label={`Total Visits: ${Number(selectedProjectVisitSummary?.totals?.total_visits || 0)}`} color="primary" variant="outlined" />
-                  <Chip label={`Engineers Visited: ${Number(selectedProjectVisitSummary?.totals?.engineer_count || 0)}`} color="info" variant="outlined" />
-                  <Chip label={`First Visit: ${selectedProjectVisitSummary?.totals?.first_visit_date || "-"}`} variant="outlined" />
-                  <Chip label={`Last Visit: ${selectedProjectVisitSummary?.totals?.last_visit_date || "-"}`} variant="outlined" />
-                </Stack>
-                <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
-                      <Typography variant="subtitle2">Engineer-wise Visits</Typography>
-                      <Table size="small" sx={{ mt: 0.8 }}>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Engineer</TableCell>
-                            <TableCell align="right">Visit Count</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {(selectedProjectVisitSummary?.byEngineer || []).map((r) => (
-                            <TableRow key={r.engineer_id || r.engineer_name}>
-                              <TableCell>{r.engineer_name}</TableCell>
-                              <TableCell align="right">{r.visit_count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </Paper>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
-                      <Typography variant="subtitle2">Month-wise Visits</Typography>
-                      <Table size="small" sx={{ mt: 0.8 }}>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Month</TableCell>
-                            <TableCell align="right">Visit Count</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {(selectedProjectVisitSummary?.byMonth || []).map((r) => (
-                            <TableRow key={r.month_key}>
-                              <TableCell>{r.month_key}</TableCell>
-                              <TableCell align="right">{r.visit_count}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </Paper>
-                  </Grid>
-                </Grid>
-                <Divider sx={{ my: 1.5 }} />
-                <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
-                  <TextField size="small" label="Visit Notes" value={adminVisitNotes} onChange={(e) => setAdminVisitNotes(e.target.value)} fullWidth />
-                  <Button variant="contained" onClick={() => adminLogVisit().catch(() => setAdminToast({ open: true, severity: "error", text: "Log visit failed" }))}>Log Site Visit</Button>
-                </Stack>
-                <Stack spacing={0.4} sx={{ mt: 0.8 }}>
-                  {adminVisits.slice(0, 5).map((v) => (
-                    <Typography key={v.id} variant="caption" color="text.secondary">
-                      {new Date(v.created_at).toLocaleString()} | {v.engineer_name || "Engineer"} | {v.notes || "-"}
-                    </Typography>
-                  ))}
-                </Stack>
-              </Paper>
-            )}
-
-            {adminInnerTab === 4 && (
-              <Paper sx={{ mt: 2, p: 2 }}>
-                <Typography variant="h6">Immutable Activity Feed</Typography>
-                <Stack spacing={1} sx={{ mt: 1.2 }}>
-                  {selectedProjectActivity.slice(0, 20).map((a) => (
-                    <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
-                      </Typography>
-                      <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0, color: "text.secondary" }}>
-                        {JSON.stringify(a.metadata_json || {}, null, 2)}
-                      </Typography>
-                    </Paper>
-                  ))}
-                  {!selectedProjectActivity.length && <Typography variant="body2" color="text.secondary">No activity found.</Typography>}
-                </Stack>
-              </Paper>
-            )}
 
             {/* Add BOM Item Dialog */}
             <Dialog open={adminOpenAdd} onClose={() => setAdminOpenAdd(false)} fullWidth maxWidth="md">

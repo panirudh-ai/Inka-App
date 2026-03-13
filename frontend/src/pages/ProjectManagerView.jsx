@@ -84,7 +84,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   const [driveFiles, setDriveFiles] = useState([]);
   const [driveUploadFile, setDriveUploadFile] = useState(null);
   const [driveUploading, setDriveUploading] = useState(false);
-  const [projectClientIds, setProjectClientIds] = useState([]);
 
   const [openAdd, setOpenAdd] = useState(false);
   const [selector, setSelector] = useState({ categoryId: "", productTypeId: "", brandId: "", itemId: "" });
@@ -126,6 +125,8 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   const [editProjectForm, setEditProjectForm] = useState({ name: "", clientId: "", clientName: "", location: "", driveLink: "", startDate: "", engineerIds: [], clientUserIds: [], categorySequenceMode: false });
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deleteProjectId, setDeleteProjectId] = useState("");
+  const [viewMode, setViewMode] = useState("list");
+  const [statusFilter, setStatusFilter] = useState("");
 
   const openCr = useMemo(() => crs.find((c) => c.status === "draft" || c.status === "pending"), [crs]);
   const openCrCount = useMemo(() => projects.filter((p) => p.has_open_cr).length, [projects]);
@@ -151,7 +152,9 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   );
 
   async function fetchProjects() {
-    const { data } = await api.get("/projects", { params: { paginated: true, page: projectPage, limit: PAGE_SIZE } });
+    const params = { paginated: true, page: projectPage, limit: PAGE_SIZE };
+    if (statusFilter) params.status = statusFilter;
+    const { data } = await api.get("/projects", { params });
     const rows = Array.isArray(data) ? data : data.data || [];
     setProjects(rows);
     setProjectPagination(Array.isArray(data) ? { page: 1, totalPages: 1, total: data.length } : data.pagination || { page: 1, totalPages: 1, total: 0 });
@@ -205,7 +208,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
 
   useEffect(() => {
     fetchProjects().catch(() => { });
-  }, [projectPage]);
+  }, [projectPage, statusFilter]);
 
   useEffect(() => {
     fetchClientMasters().catch(() => { });
@@ -219,9 +222,33 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     if (selectedModel) setRate(Number(selectedModel.default_rate || 0));
   }, [selectedModel]);
 
+
   useEffect(() => {
-    setProjectClientIds(dashboard?.project?.assigned_client_ids || []);
-  }, [dashboard?.project?.id]);
+    const match = window.location.pathname.match(/\/project\/([^/]+)\/dashboard/);
+    if (match) {
+      setProjectId(match[1]);
+      setOuterTab(0);
+      setViewMode("dashboard");
+    }
+  }, []);
+
+  useEffect(() => {
+    function onPop() { setViewMode("list"); }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  function openProjectDashboard(pid) {
+    setProjectId(pid);
+    setOuterTab(0);
+    setViewMode("dashboard");
+    window.history.pushState({ projectId: pid }, "", `/project/${pid}/dashboard`);
+  }
+
+  function goBackToList() {
+    setViewMode("list");
+    window.history.back();
+  }
 
   async function addBomItem() {
     if (!openCr?.id || !selector.itemId) return;
@@ -377,12 +404,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     await fetchProjects();
   }
 
-  async function saveProjectClientMapping() {
-    if (!projectId) return;
-    await api.patch(`/projects/${projectId}`, { clientUserIds: projectClientIds });
-    setToast({ open: true, severity: "success", text: "Client mapping updated" });
-    await loadProject(projectId);
-  }
 
   async function uploadDriveFile() {
     if (!projectId || !driveUploadFile) return;
@@ -497,6 +518,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
         </Grid>
       </Grid>
 
+      {viewMode === "list" && (
       <Paper sx={{ mb: 2, p: 1 }}>
         <Tabs
           value={outerTab}
@@ -510,12 +532,28 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Tab label="Reports" />
         </Tabs>
       </Paper>
+      )}
 
-      {outerTab === 0 && (
+      {viewMode === "list" && outerTab === 0 && (
       <Paper sx={{ p: 2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1} justifyContent="space-between" alignItems={{ md: "center" }}>
           <Typography variant="h6">Project List</Typography>
-          <Button variant="contained" onClick={() => setOpenCreateProject(true)}>Create Project</Button>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            <FormControl size="small" sx={{ minWidth: 130 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                label="Status"
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setProjectPage(1); }}
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="active">Active</MenuItem>
+                <MenuItem value="on_hold">On Hold</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </Select>
+            </FormControl>
+            <Button variant="contained" onClick={() => setOpenCreateProject(true)}>Create Project</Button>
+          </Stack>
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
           <Button size="small" disabled={projectPagination.page <= 1} onClick={() => setProjectPage((p) => Math.max(1, p - 1))}>Prev</Button>
@@ -687,13 +725,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                               sx={{ mt: 1 }}
                               size="small"
                               variant="outlined"
-                              onClick={() => {
-                                setProjectId(p.id);
-                                loadProject(p.id).catch(() => {});
-                                setTimeout(() => {
-                                  document.getElementById('pm-project-dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }, 150);
-                              }}
+                              onClick={() => openProjectDashboard(p.id)}
                             >
                               Open In Dashboard
                             </Button>
@@ -710,7 +742,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
       </Paper>
       )}
 
-      {outerTab === 1 && (
+      {viewMode === "list" && outerTab === 1 && (
       <>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="h6">Client Master</Typography>
@@ -836,6 +868,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
 
       {outerTab === 0 && (
       <>
+      {viewMode === "dashboard" && (
+        <Button variant="outlined" sx={{ mb: 2 }} onClick={goBackToList}>
+          ← Back to Projects
+        </Button>
+      )}
       <Paper id="pm-project-dashboard" sx={{ p: 2.2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }} justifyContent="space-between">
           <Typography variant="h6">Project Dashboard</Typography>
@@ -881,7 +918,24 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Project</Typography><Typography variant="body2">{dashboard.project.name}</Typography></Grid>
               <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Client</Typography><Typography variant="body2">{dashboard.project.client_name}</Typography></Grid>
               <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Location</Typography><Typography variant="body2">{dashboard.project.location}</Typography></Grid>
-              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Status</Typography><Typography variant="body2">{dashboard.project.status}</Typography></Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <Typography variant="caption" color="text.secondary">Status</Typography>
+                <Select
+                  size="small"
+                  value={dashboard.project.status}
+                  onChange={async (e) => {
+                    await api.patch(`/projects/${projectId}`, { status: e.target.value });
+                    setToast({ open: true, severity: "success", text: "Status updated" });
+                    await loadProject(projectId);
+                    await fetchProjects();
+                  }}
+                  sx={{ display: "block", mt: 0.3 }}
+                >
+                  <MenuItem value="active">Active</MenuItem>
+                  <MenuItem value="on_hold">On Hold</MenuItem>
+                  <MenuItem value="completed">Completed</MenuItem>
+                </Select>
+              </Grid>
             </Grid>
             {dashboard.project.drive_link ? (
               <Button
@@ -918,24 +972,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                 ))}
               </Stack>
             ) : null}
-            {canEditScope ? (
-              <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1.1 }} alignItems={{ md: "center" }}>
-                <FormControl size="small" sx={{ minWidth: 300 }}>
-                  <InputLabel>Mapped Clients</InputLabel>
-                  <Select
-                    multiple
-                    label="Mapped Clients"
-                    value={projectClientIds}
-                    onChange={(e) => setProjectClientIds(e.target.value)}
-                  >
-                    {clients.map((u) => (
-                      <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Button variant="outlined" onClick={saveProjectClientMapping}>Save Client Mapping</Button>
-              </Stack>
-            ) : null}
             <Divider sx={{ my: 1 }} />
             <Typography variant="caption" color="text.secondary">Project Contacts</Typography>
             <Stack spacing={0.8} sx={{ mt: 0.8 }}>
@@ -954,24 +990,75 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               </Stack>
             </Stack>
             <Divider sx={{ my: 1 }} />
-            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
-              <TextField size="small" label="Visit Notes" value={visitNotes} onChange={(e) => setVisitNotes(e.target.value)} fullWidth />
-              <Button variant="contained" onClick={logVisit}>Log Site Visit</Button>
-            </Stack>
-            <Stack spacing={0.4} sx={{ mt: 0.8 }}>
+            <TextField
+              label="Visit Notes"
+              value={visitNotes}
+              onChange={(e) => setVisitNotes(e.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+              sx={{ mb: 1 }}
+            />
+            <Button variant="contained" onClick={logVisit}>Log Site Visit</Button>
+            <Stack spacing={0.4} sx={{ mt: 1 }}>
               {visits.slice(0, 5).map((v) => (
                 <Typography key={v.id} variant="caption" color="text.secondary">
                   {new Date(v.created_at).toLocaleString()} | {v.engineer_name || "Engineer"} | {v.notes || "-"}
                 </Typography>
               ))}
             </Stack>
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="caption" color="text.secondary">Recent Activity</Typography>
-            <Stack spacing={0.6} sx={{ mt: 0.5 }}>
-              {activity.slice(0, 4).map((a) => (
-                <Typography key={a.id} variant="caption">
-                  {a.action_type} | {new Date(a.created_at).toLocaleString()}
-                </Typography>
+            <Divider sx={{ my: 1.5 }} />
+            <Typography variant="subtitle2" sx={{ mb: 0.8 }}>Visit Analytics</Typography>
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
+              <Chip label={`Total Visits: ${Number(visitSummary?.totals?.total_visits || 0)}`} color="primary" variant="outlined" size="small" />
+              <Chip label={`Engineers: ${Number(visitSummary?.totals?.engineer_count || 0)}`} color="info" variant="outlined" size="small" />
+              <Chip label={`First Visit: ${visitSummary?.totals?.first_visit_date || "-"}`} variant="outlined" size="small" />
+              <Chip label={`Last Visit: ${visitSummary?.totals?.last_visit_date || "-"}`} variant="outlined" size="small" />
+            </Stack>
+            <Grid container spacing={1.5} sx={{ mb: 1 }}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                  <Typography variant="caption" color="text.secondary">Engineer-wise Visits</Typography>
+                  <Table size="small" sx={{ mt: 0.5 }}>
+                    <TableHead><TableRow><TableCell>Engineer</TableCell><TableCell align="right">Visits</TableCell></TableRow></TableHead>
+                    <TableBody>
+                      {(visitSummary?.byEngineer || []).map((r) => (
+                        <TableRow key={r.engineer_id || r.engineer_name}>
+                          <TableCell>{r.engineer_name}</TableCell>
+                          <TableCell align="right">{r.visit_count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
+                  <Typography variant="caption" color="text.secondary">Month-wise Visits</Typography>
+                  <Table size="small" sx={{ mt: 0.5 }}>
+                    <TableHead><TableRow><TableCell>Month</TableCell><TableCell align="right">Visits</TableCell></TableRow></TableHead>
+                    <TableBody>
+                      {(visitSummary?.byMonth || []).map((r) => (
+                        <TableRow key={r.month_key}>
+                          <TableCell>{r.month_key}</TableCell>
+                          <TableCell align="right">{r.visit_count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              </Grid>
+            </Grid>
+            <Divider sx={{ my: 1.5 }} />
+            <Typography variant="subtitle2" sx={{ mb: 0.8 }}>Activity Feed</Typography>
+            <Stack spacing={0.6}>
+              {activity.slice(0, 8).map((a) => (
+                <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
+                  </Typography>
+                </Paper>
               ))}
             </Stack>
           </Paper>
@@ -983,8 +1070,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Tab label="BOM" />
           <Tab label="Change Requests" />
           <Tab label="Deliveries" />
-          <Tab label="Visits Analytics" />
-          <Tab label="Activity Feed" />
         </Tabs>
       </Paper>
 
@@ -1170,84 +1255,10 @@ export default function ProjectManagerView({ masterData, role = "project_manager
         </Paper>
       )}
 
-      {tab === 3 && (
-        <Paper sx={{ mt: 2, p: 2 }}>
-          <Typography variant="h6">Site Visit Analytics</Typography>
-          <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
-            <Chip label={`Total Visits: ${Number(visitSummary?.totals?.total_visits || 0)}`} color="primary" variant="outlined" />
-            <Chip label={`Engineers Visited: ${Number(visitSummary?.totals?.engineer_count || 0)}`} color="info" variant="outlined" />
-            <Chip label={`First Visit: ${visitSummary?.totals?.first_visit_date || "-"}`} variant="outlined" />
-            <Chip label={`Last Visit: ${visitSummary?.totals?.last_visit_date || "-"}`} variant="outlined" />
-          </Stack>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
-                <Typography variant="subtitle2">Engineer-wise Visits</Typography>
-                <Table size="small" sx={{ mt: 0.8 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Engineer</TableCell>
-                      <TableCell align="right">Visit Count</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(visitSummary?.byEngineer || []).map((r) => (
-                      <TableRow key={r.engineer_id || r.engineer_name}>
-                        <TableCell>{r.engineer_name}</TableCell>
-                        <TableCell align="right">{r.visit_count}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Paper>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
-                <Typography variant="subtitle2">Month-wise Visits</Typography>
-                <Table size="small" sx={{ mt: 0.8 }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Month</TableCell>
-                      <TableCell align="right">Visit Count</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {(visitSummary?.byMonth || []).map((r) => (
-                      <TableRow key={r.month_key}>
-                        <TableCell>{r.month_key}</TableCell>
-                        <TableCell align="right">{r.visit_count}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Paper>
-            </Grid>
-          </Grid>
-        </Paper>
-      )}
-
-      {tab === 4 && (
-        <Paper sx={{ mt: 2, p: 2 }}>
-          <Typography variant="h6">Immutable Activity Feed</Typography>
-          <Stack spacing={1} sx={{ mt: 1.2 }}>
-            {activity.slice(0, 20).map((a) => (
-              <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
-                </Typography>
-                <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap", m: 0, color: "text.secondary" }}>
-                  {JSON.stringify(a.metadata_json || {}, null, 2)}
-                </Typography>
-              </Paper>
-            ))}
-          </Stack>
-        </Paper>
-      )}
       </>
       )}
 
-      {outerTab === 2 && (
+      {viewMode === "list" && outerTab === 2 && (
         <Paper sx={{ p: 2, mt: 1.5 }}>
           <Typography variant="h6">Reports</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>

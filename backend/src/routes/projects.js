@@ -75,6 +75,12 @@ router.get(
       )`;
     }
 
+    const validStatuses = ["active", "on_hold", "completed"];
+    if (req.query.status && validStatuses.includes(req.query.status)) {
+      baseValues.push(req.query.status);
+      extraWhere += ` AND p.status = $${baseValues.length}`;
+    }
+
     const countResult = await pool.query(
       `SELECT COUNT(*)::int AS total
        FROM projects p
