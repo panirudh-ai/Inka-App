@@ -8,6 +8,7 @@ import {
   Container,
   CssBaseline,
   Divider,
+  Fade,
   IconButton,
   Stack,
   Toolbar,
@@ -15,22 +16,22 @@ import {
   Typography,
 } from "@mui/material";
 import { ThemeProvider, alpha } from "@mui/material/styles";
-import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
-import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
-import AdminView from "./pages/AdminView";
-import ProjectManagerView from "./pages/ProjectManagerView";
-import EngineerView from "./pages/EngineerView";
-import ClientView from "./pages/ClientView";
-import LoginView from "./pages/LoginView";
+import DarkModeRoundedIcon   from "@mui/icons-material/DarkModeRounded";
+import LightModeRoundedIcon  from "@mui/icons-material/LightModeRounded";
+import AdminView             from "./pages/AdminView";
+import ProjectManagerView    from "./pages/ProjectManagerView";
+import EngineerView          from "./pages/EngineerView";
+import ClientView            from "./pages/ClientView";
+import LoginView             from "./pages/LoginView";
+import AnimatedBackground    from "./components/AnimatedBackground";
 import { clearSession, getSession, safeGet } from "./api/client";
-import { buildTheme } from "./theme.js";
+import { buildTheme, G8 } from "./theme.js";
 
-// Role metadata
 const ROLE_META = {
-  admin:           { label: "Admin",           badge: "Admin",   color: "#635BFF" },
-  project_manager: { label: "Project Manager", badge: "PM",      color: "#0073E6" },
-  engineer:        { label: "Engineer",         badge: "Eng",     color: "#1A9E5D" },
-  client:          { label: "Client Portal",    badge: "Client",  color: "#B7791F" },
+  admin:           { label: "Admin",           color: G8.orange  },
+  project_manager: { label: "Project Manager", color: "#60a5fa"  },
+  engineer:        { label: "Engineer",         color: "#4ade80"  },
+  client:          { label: "Client Portal",    color: "#fbbf24"  },
 };
 
 function initials(name = "") {
@@ -38,21 +39,21 @@ function initials(name = "") {
 }
 
 export default function App() {
-  const [session, setSession]     = useState(getSession());
-  const [themeMode, setThemeMode] = useState(localStorage.getItem("inka_theme_mode") || "light");
+  const [session,   setSession]   = useState(getSession());
+  const [themeMode, setThemeMode] = useState(localStorage.getItem("inka_theme_mode") || "dark");
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [masterData, setMasterData] = useState({ categories: [], productTypes: [], brands: [], items: [] });
 
   useEffect(() => {
     if (!session) return;
     Promise.all([
-      safeGet("/reference/categories", []),
+      safeGet("/reference/categories",    []),
       safeGet("/reference/product-types", []),
-      safeGet("/reference/brands", []),
-      safeGet("/reference/items", []),
-    ]).then(([categories, productTypes, brands, items]) => {
-      setMasterData({ categories, productTypes, brands, items });
-    });
+      safeGet("/reference/brands",        []),
+      safeGet("/reference/items",         []),
+    ]).then(([categories, productTypes, brands, items]) =>
+      setMasterData({ categories, productTypes, brands, items })
+    );
   }, [session]);
 
   useEffect(() => {
@@ -61,10 +62,10 @@ export default function App() {
     return () => window.removeEventListener("beforeinstallprompt", handle);
   }, []);
 
-  const theme   = useMemo(() => buildTheme(themeMode), [themeMode]);
-  const isDark  = themeMode === "dark";
+  const theme    = useMemo(() => buildTheme(themeMode), [themeMode]);
+  const isDark   = themeMode === "dark";
   const roleView = session?.user?.role;
-  const meta     = ROLE_META[roleView] || { label: "INKA", badge: "?", color: "#635BFF" };
+  const meta     = ROLE_META[roleView] || { label: "INKA", color: G8.orange };
 
   const toggleTheme = () => {
     const next = isDark ? "light" : "dark";
@@ -76,7 +77,10 @@ export default function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <LoginView onLogin={setSession} />
+        <AnimatedBackground isDark={isDark} />
+        <Box sx={{ position: "relative", zIndex: 1 }}>
+          <LoginView onLogin={setSession} />
+        </Box>
       </ThemeProvider>
     );
   }
@@ -84,74 +88,76 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
 
-        {/* ── Top Navigation Bar ─────────────────────────────────────── */}
+      {/* Animated background — fixed, behind everything */}
+      <AnimatedBackground isDark={isDark} />
+
+      {/* App shell */}
+      <Box sx={{ position: "relative", zIndex: 1, minHeight: "100vh" }}>
+
+        {/* ── Navigation bar ──────────────────────────────────────────── */}
         <AppBar position="sticky">
-          <Toolbar
-            sx={{
-              minHeight: { xs: 52, sm: 56 },
-              px: { xs: 2, sm: 3 },
-              gap: 1.5,
-            }}
-          >
-            {/* Wordmark */}
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mr: 2 }}>
+          <Toolbar sx={{ minHeight: { xs: 52, sm: 56 }, px: { xs: 2, sm: 3 }, gap: 1 }}>
+
+            {/* Logo */}
+            <Stack direction="row" alignItems="center" spacing={1.2} sx={{ mr: 2, flexShrink: 0 }}>
               <Box
                 sx={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "7px",
-                  background: "linear-gradient(135deg, #7B73FF 0%, #635BFF 100%)",
+                  width: 30,
+                  height: 30,
+                  borderRadius: "8px",
+                  background: `linear-gradient(135deg, ${alpha(G8.orange, 0.9)} 0%, ${G8.orange} 100%)`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  boxShadow: `0 2px 10px ${alpha(G8.orange, 0.4)}`,
                   flexShrink: 0,
                 }}
               >
-                <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: 13, lineHeight: 1 }}>I</Typography>
+                <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: 14, lineHeight: 1 }}>I</Typography>
               </Box>
               <Typography
                 sx={{
                   fontWeight: 700,
-                  fontSize: { xs: "0.95rem", sm: "1rem" },
-                  color: isDark ? "#E2E8F0" : "#0A2540",
-                  letterSpacing: "-0.01em",
+                  fontSize: "1rem",
+                  letterSpacing: "-0.02em",
+                  color: "text.primary",
+                  fontFamily: '"DM Serif Display", Georgia, serif',
                 }}
               >
                 INKA
               </Typography>
             </Stack>
 
-            {/* Role badge */}
+            {/* Role label */}
             <Chip
               label={meta.label}
               size="small"
               sx={{
-                bgcolor: alpha(meta.color, isDark ? 0.2 : 0.08),
+                bgcolor: alpha(meta.color, isDark ? 0.15 : 0.08),
                 color: meta.color,
-                fontWeight: 600,
+                border: `1px solid ${alpha(meta.color, 0.2)}`,
+                fontWeight: 500,
                 fontSize: "0.75rem",
                 height: 22,
-                borderRadius: "4px",
-                border: `1px solid ${alpha(meta.color, 0.25)}`,
+                borderRadius: "100px",
               }}
             />
 
             <Box sx={{ flexGrow: 1 }} />
 
-            {/* Right actions */}
+            {/* Right cluster */}
             <Stack direction="row" alignItems="center" spacing={0.5}>
               <Tooltip title={isDark ? "Light mode" : "Dark mode"}>
-                <IconButton size="small" onClick={toggleTheme} sx={{ color: "text.secondary" }}>
-                  {isDark ? <LightModeRoundedIcon sx={{ fontSize: 18 }} /> : <DarkModeRoundedIcon sx={{ fontSize: 18 }} />}
+                <IconButton size="small" onClick={toggleTheme}>
+                  {isDark
+                    ? <LightModeRoundedIcon sx={{ fontSize: 17 }} />
+                    : <DarkModeRoundedIcon  sx={{ fontSize: 17 }} />}
                 </IconButton>
               </Tooltip>
 
               {installPromptEvent && (
-                <Button
-                  variant="outlined"
-                  size="small"
+                <Button variant="outlined" size="small"
                   onClick={async () => {
                     installPromptEvent.prompt();
                     await installPromptEvent.userChoice;
@@ -162,19 +168,23 @@ export default function App() {
                 </Button>
               )}
 
-              <Divider orientation="vertical" flexItem sx={{ mx: 0.5, height: 20, alignSelf: "center" }} />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ height: 18, alignSelf: "center", mx: 0.5, borderColor: "divider" }}
+              />
 
-              {/* User avatar */}
-              <Stack direction="row" alignItems="center" spacing={1}>
+              {/* User identity */}
+              <Stack direction="row" alignItems="center" spacing={0.8}>
                 <Avatar
                   sx={{
-                    width: 28,
-                    height: 28,
-                    fontSize: "0.7rem",
+                    width: 26,
+                    height: 26,
+                    fontSize: "0.65rem",
                     fontWeight: 700,
-                    bgcolor: alpha(meta.color, 0.15),
+                    bgcolor: alpha(meta.color, isDark ? 0.2 : 0.12),
                     color: meta.color,
-                    border: `1.5px solid ${alpha(meta.color, 0.3)}`,
+                    border: `1.5px solid ${alpha(meta.color, 0.25)}`,
                   }}
                 >
                   {initials(session.user.name)}
@@ -183,12 +193,12 @@ export default function App() {
                   variant="body2"
                   sx={{
                     fontWeight: 500,
-                    color: "text.primary",
                     display: { xs: "none", sm: "block" },
-                    maxWidth: 140,
+                    maxWidth: 130,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    color: "text.primary",
                   }}
                 >
                   {session.user.name}
@@ -198,8 +208,8 @@ export default function App() {
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => { clearSession(); setSession(null); }}
                 sx={{ ml: 0.5 }}
+                onClick={() => { clearSession(); setSession(null); }}
               >
                 Sign out
               </Button>
@@ -207,16 +217,15 @@ export default function App() {
           </Toolbar>
         </AppBar>
 
-        {/* ── Page content ───────────────────────────────────────────── */}
-        <Container
-          maxWidth="xl"
-          sx={{ py: { xs: 2.5, sm: 3.5 }, px: { xs: 2, sm: 3 } }}
-        >
-          {roleView === "admin"           && <AdminView />}
-          {roleView === "project_manager" && <ProjectManagerView masterData={masterData} role={roleView} />}
-          {roleView === "engineer"        && <EngineerView />}
-          {roleView === "client"          && <ClientView />}
-        </Container>
+        {/* ── Content ─────────────────────────────────────────────────── */}
+        <Fade in timeout={500}>
+          <Container maxWidth="xl" sx={{ py: { xs: 2.5, sm: 3.5 }, px: { xs: 2, sm: 3 } }}>
+            {roleView === "admin"           && <AdminView />}
+            {roleView === "project_manager" && <ProjectManagerView masterData={masterData} role={roleView} />}
+            {roleView === "engineer"        && <EngineerView />}
+            {roleView === "client"          && <ClientView />}
+          </Container>
+        </Fade>
       </Box>
     </ThemeProvider>
   );
