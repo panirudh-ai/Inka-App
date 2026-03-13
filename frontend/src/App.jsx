@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AppBar,
+  Avatar,
   Box,
   Button,
+  Chip,
   Container,
   CssBaseline,
+  Divider,
   IconButton,
   Stack,
   Toolbar,
   Tooltip,
   Typography,
-  Paper,
-  Grow,
 } from "@mui/material";
-import { ThemeProvider } from "@mui/material/styles";
+import { ThemeProvider, alpha } from "@mui/material/styles";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
-import { keyframes } from "@mui/system";
 import AdminView from "./pages/AdminView";
 import ProjectManagerView from "./pages/ProjectManagerView";
 import EngineerView from "./pages/EngineerView";
@@ -25,22 +25,23 @@ import LoginView from "./pages/LoginView";
 import { clearSession, getSession, safeGet } from "./api/client";
 import { buildTheme } from "./theme.js";
 
-const glow = keyframes`
-  0% { transform: translateY(0px); opacity: 0.55; }
-  50% { transform: translateY(-12px); opacity: 0.9; }
-  100% { transform: translateY(0px); opacity: 0.55; }
-`;
+// Role metadata
+const ROLE_META = {
+  admin:           { label: "Admin",           badge: "Admin",   color: "#635BFF" },
+  project_manager: { label: "Project Manager", badge: "PM",      color: "#0073E6" },
+  engineer:        { label: "Engineer",         badge: "Eng",     color: "#1A9E5D" },
+  client:          { label: "Client Portal",    badge: "Client",  color: "#B7791F" },
+};
+
+function initials(name = "") {
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+}
 
 export default function App() {
-  const [session, setSession] = useState(getSession());
+  const [session, setSession]     = useState(getSession());
   const [themeMode, setThemeMode] = useState(localStorage.getItem("inka_theme_mode") || "light");
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
-  const [masterData, setMasterData] = useState({
-    categories: [],
-    productTypes: [],
-    brands: [],
-    items: [],
-  });
+  const [masterData, setMasterData] = useState({ categories: [], productTypes: [], brands: [], items: [] });
 
   useEffect(() => {
     if (!session) return;
@@ -55,28 +56,21 @@ export default function App() {
   }, [session]);
 
   useEffect(() => {
-    function handleBeforeInstallPrompt(e) {
-      e.preventDefault();
-      setInstallPromptEvent(e);
-    }
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    function handle(e) { e.preventDefault(); setInstallPromptEvent(e); }
+    window.addEventListener("beforeinstallprompt", handle);
+    return () => window.removeEventListener("beforeinstallprompt", handle);
   }, []);
 
+  const theme   = useMemo(() => buildTheme(themeMode), [themeMode]);
+  const isDark  = themeMode === "dark";
   const roleView = session?.user?.role;
-  const theme = useMemo(() => buildTheme(themeMode), [themeMode]);
-  const isDark = themeMode === "dark";
+  const meta     = ROLE_META[roleView] || { label: "INKA", badge: "?", color: "#635BFF" };
 
-  const roleLabel = useMemo(
-    () =>
-      ({
-        admin: "Admin Web App",
-        project_manager: "Project Manager Web App",
-        engineer: "Engineer Mobile App",
-        client: "Client Portal",
-      })[roleView] || "INKA",
-    [roleView]
-  );
+  const toggleTheme = () => {
+    const next = isDark ? "light" : "dark";
+    setThemeMode(next);
+    localStorage.setItem("inka_theme_mode", next);
+  };
 
   if (!session) {
     return (
@@ -90,66 +84,73 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ minHeight: "100vh", position: "relative", overflow: "hidden" }}>
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            background: isDark
-              ? "linear-gradient(135deg, #020617 0%, #0b1220 48%, #1f2937 100%)"
-              : "linear-gradient(135deg, #e6fffb 0%, #f8fafc 42%, #fff6ed 100%)",
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            width: 320,
-            height: 320,
-            borderRadius: "50%",
-            background: isDark
-              ? "radial-gradient(circle, rgba(45,212,191,.26), transparent 68%)"
-              : "radial-gradient(circle, rgba(20,184,166,.28), transparent 68%)",
-            top: -60,
-            right: -50,
-            animation: `${glow} 6s ease-in-out infinite`,
-            pointerEvents: "none",
-          }}
-        />
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
 
-        <AppBar position="sticky" color="transparent" elevation={0}>
+        {/* ── Top Navigation Bar ─────────────────────────────────────── */}
+        <AppBar position="sticky">
           <Toolbar
             sx={{
-              backdropFilter: "blur(10px)",
-              borderBottom: isDark ? "1px solid rgba(148,163,184,0.25)" : "1px solid #dbeafe",
-              py: { xs: 0.8, sm: 0.2 },
-              alignItems: { xs: "flex-start", sm: "center" },
-              flexWrap: "wrap",
-              rowGap: 0.8,
+              minHeight: { xs: 52, sm: 56 },
+              px: { xs: 2, sm: 3 },
+              gap: 1.5,
             }}
           >
-            <Typography
-              variant="h6"
-              sx={{ flexGrow: 1, pr: 1, lineHeight: 1.25, fontSize: { xs: "1rem", sm: "1.15rem" } }}
-            >
-              INKA Project Management System
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: { xs: 0, sm: "auto" }, flexWrap: "wrap" }}>
-              <Typography variant="body2">{session.user.name} ({session.user.role})</Typography>
-              <Tooltip title={isDark ? "Switch to light mode" : "Switch to dark mode"}>
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    const next = isDark ? "light" : "dark";
-                    setThemeMode(next);
-                    localStorage.setItem("inka_theme_mode", next);
-                  }}
-                >
-                  {isDark ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />}
+            {/* Wordmark */}
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mr: 2 }}>
+              <Box
+                sx={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "7px",
+                  background: "linear-gradient(135deg, #7B73FF 0%, #635BFF 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: 13, lineHeight: 1 }}>I</Typography>
+              </Box>
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: { xs: "0.95rem", sm: "1rem" },
+                  color: isDark ? "#E2E8F0" : "#0A2540",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                INKA
+              </Typography>
+            </Stack>
+
+            {/* Role badge */}
+            <Chip
+              label={meta.label}
+              size="small"
+              sx={{
+                bgcolor: alpha(meta.color, isDark ? 0.2 : 0.08),
+                color: meta.color,
+                fontWeight: 600,
+                fontSize: "0.75rem",
+                height: 22,
+                borderRadius: "4px",
+                border: `1px solid ${alpha(meta.color, 0.25)}`,
+              }}
+            />
+
+            <Box sx={{ flexGrow: 1 }} />
+
+            {/* Right actions */}
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Tooltip title={isDark ? "Light mode" : "Dark mode"}>
+                <IconButton size="small" onClick={toggleTheme} sx={{ color: "text.secondary" }}>
+                  {isDark ? <LightModeRoundedIcon sx={{ fontSize: 18 }} /> : <DarkModeRoundedIcon sx={{ fontSize: 18 }} />}
                 </IconButton>
               </Tooltip>
-              {installPromptEvent ? (
+
+              {installPromptEvent && (
                 <Button
-                  variant="contained"
+                  variant="outlined"
                   size="small"
                   onClick={async () => {
                     installPromptEvent.prompt();
@@ -157,47 +158,64 @@ export default function App() {
                     setInstallPromptEvent(null);
                   }}
                 >
-                  Install App
+                  Install
                 </Button>
-              ) : null}
+              )}
+
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.5, height: 20, alignSelf: "center" }} />
+
+              {/* User avatar */}
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Avatar
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    bgcolor: alpha(meta.color, 0.15),
+                    color: meta.color,
+                    border: `1.5px solid ${alpha(meta.color, 0.3)}`,
+                  }}
+                >
+                  {initials(session.user.name)}
+                </Avatar>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 500,
+                    color: "text.primary",
+                    display: { xs: "none", sm: "block" },
+                    maxWidth: 140,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {session.user.name}
+                </Typography>
+              </Stack>
+
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => {
-                  clearSession();
-                  setSession(null);
-                }}
+                onClick={() => { clearSession(); setSession(null); }}
+                sx={{ ml: 0.5 }}
               >
-                Logout
+                Sign out
               </Button>
             </Stack>
           </Toolbar>
         </AppBar>
 
-        <Container maxWidth="xl" sx={{ py: 2.4, position: "relative" }}>
-          <Grow in timeout={420}>
-            <Paper
-              sx={{
-                p: 2.2,
-                mb: 2,
-                bgcolor: isDark ? "rgba(17,24,39,0.72)" : "rgba(255,255,255,0.72)",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              <Typography variant="overline" color="primary" sx={{ letterSpacing: "0.12em" }}>Unified Product Blueprint</Typography>
-              <Typography variant="h4" sx={{ fontSize: { xs: 25, md: 33 } }}>{roleLabel}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Single Live BOM. Structured Scope Governance. Change-by-approval only.
-              </Typography>
-            </Paper>
-          </Grow>
-
-          {roleView === "admin" && <AdminView />}
-          {roleView === "project_manager" && (
-            <ProjectManagerView masterData={masterData} role={roleView} />
-          )}
-          {roleView === "engineer" && <EngineerView />}
-          {roleView === "client" && <ClientView />}
+        {/* ── Page content ───────────────────────────────────────────── */}
+        <Container
+          maxWidth="xl"
+          sx={{ py: { xs: 2.5, sm: 3.5 }, px: { xs: 2, sm: 3 } }}
+        >
+          {roleView === "admin"           && <AdminView />}
+          {roleView === "project_manager" && <ProjectManagerView masterData={masterData} role={roleView} />}
+          {roleView === "engineer"        && <EngineerView />}
+          {roleView === "client"          && <ClientView />}
         </Container>
       </Box>
     </ThemeProvider>

@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { Alert, Box, Button, Divider, Stack, TextField, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { api, setSession } from "../api/client";
 
 export default function LoginView({ onLogin }) {
-  const [email, setEmail] = useState("admin@inka.local");
+  const [email,    setEmail]    = useState("admin@inka.local");
   const [password, setPassword] = useState("Inka@123");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
 
   async function submit(e) {
     e.preventDefault();
@@ -25,24 +25,129 @@ export default function LoginView({ onLogin }) {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", p: 2 }}>
-      <Paper sx={{ p: 3, width: "100%", maxWidth: 440 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-          <LockOutlinedIcon color="primary" />
-          <Typography variant="h6">INKA Login</Typography>
-        </Stack>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Role-based authorization enabled.
-        </Typography>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "background.default",
+        p: 2,
+      }}
+    >
+      {/* Card */}
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 400,
+          bgcolor: "background.paper",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 2,
+          boxShadow: "0 4px 24px rgba(10,37,64,0.10), 0 1px 4px rgba(10,37,64,0.06)",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <Box
+          sx={{
+            px: 3,
+            pt: 3,
+            pb: 2.5,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            bgcolor: (theme) => theme.palette.mode === "dark" ? alpha("#FFFFFF", 0.02) : "#F6F9FC",
+          }}
+        >
+          {/* Logo mark */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2, mb: 1.5 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "8px",
+                background: "linear-gradient(135deg, #7B73FF 0%, #635BFF 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(99,91,255,0.3)",
+              }}
+            >
+              <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: 15, lineHeight: 1 }}>I</Typography>
+            </Box>
+            <Typography sx={{ fontWeight: 700, fontSize: "1.1rem", letterSpacing: "-0.01em", color: "text.primary" }}>
+              INKA
+            </Typography>
+          </Box>
 
-        {error ? <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert> : null}
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.4 }}>
+            Sign in
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Project Management System
+          </Typography>
+        </Box>
 
-        <Stack component="form" spacing={1.2} onSubmit={submit}>
-          <TextField label="Email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth />
-          <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth />
-          <Button type="submit" variant="contained" disabled={loading}>{loading ? "Signing in..." : "Sign In"}</Button>
-        </Stack>
-      </Paper>
+        {/* Form */}
+        <Box sx={{ p: 3 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
+          <Stack component="form" spacing={1.8} onSubmit={submit}>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.6, color: "text.primary" }}>
+                Email address
+              </Typography>
+              <TextField
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                fullWidth
+                size="small"
+                type="email"
+                placeholder="you@company.com"
+                autoComplete="email"
+                autoFocus
+              />
+            </Box>
+
+            <Box>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.6 }}>
+                <Typography variant="body2" sx={{ fontWeight: 500, color: "text.primary" }}>
+                  Password
+                </Typography>
+              </Stack>
+              <TextField
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                fullWidth
+                size="small"
+                type="password"
+                autoComplete="current-password"
+              />
+            </Box>
+
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={loading}
+              sx={{ mt: 0.5, height: 38, fontWeight: 600 }}
+            >
+              {loading ? "Signing in…" : "Sign in"}
+            </Button>
+          </Stack>
+        </Box>
+
+        <Divider />
+        <Box sx={{ px: 3, py: 1.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            Role-based access control enabled. Contact your admin for credentials.
+          </Typography>
+        </Box>
+      </Box>
     </Box>
   );
 }
