@@ -155,7 +155,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     const params = { paginated: true, page: projectPage, limit: PAGE_SIZE };
     if (statusFilter) params.status = statusFilter;
     const { data } = await api.get("/projects", { params });
-    const rows = Array.isArray(data) ? data : data.data || [];
+    const rows = (Array.isArray(data) ? data : data.data || []).reverse();
     setProjects(rows);
     setProjectPagination(Array.isArray(data) ? { page: 1, totalPages: 1, total: data.length } : data.pagination || { page: 1, totalPages: 1, total: 0 });
     if (rows.length && !projectId) setProjectId(rows[0].id);
@@ -172,7 +172,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
 
   async function fetchClientMasters() {
     const { data } = await api.get("/clients", { params: { paginated: true, page: clientPage, limit: PAGE_SIZE } });
-    setClientMasters(Array.isArray(data) ? data : data.data || []);
+    setClientMasters((Array.isArray(data) ? data : data.data || []).reverse());
     setClientPagination(Array.isArray(data) ? { page: 1, totalPages: 1, total: data.length } : data.pagination || { page: 1, totalPages: 1, total: 0 });
   }
 
@@ -1379,16 +1379,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <FormControl fullWidth>
-                <InputLabel>Client Master (Optional)</InputLabel>
+                <InputLabel>Client</InputLabel>
                 <Select
-                  label="Client Master (Optional)"
+                  label="Client"
                   value={newProject.clientId}
                   onChange={(e) => {
                     const selected = clientMasters.find((c) => c.id === e.target.value);
                     setNewProject((p) => ({
                       ...p,
                       clientId: e.target.value,
-                      clientName: selected?.name || p.clientName,
+                      clientName: selected?.name || "",
                       location: selected?.location || p.location,
                     }));
                   }}
@@ -1399,9 +1399,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField label="Client Name" fullWidth value={newProject.clientName} onChange={(e) => setNewProject((p) => ({ ...p, clientName: e.target.value }))} />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField label="Location" fullWidth value={newProject.location} onChange={(e) => setNewProject((p) => ({ ...p, location: e.target.value }))} />
@@ -1422,21 +1419,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                   onChange={(e) => setNewProject((p) => ({ ...p, engineerIds: e.target.value }))}
                 >
                   {engineers.map((u) => (
-                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <FormControl fullWidth>
-                <InputLabel>Assigned Clients</InputLabel>
-                <Select
-                  multiple
-                  label="Assigned Clients"
-                  value={newProject.clientUserIds}
-                  onChange={(e) => setNewProject((p) => ({ ...p, clientUserIds: e.target.value }))}
-                >
-                  {clients.map((u) => (
                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                   ))}
                 </Select>
@@ -1472,16 +1454,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <FormControl fullWidth>
-                <InputLabel>Client Master (Optional)</InputLabel>
+                <InputLabel>Client</InputLabel>
                 <Select
-                  label="Client Master (Optional)"
+                  label="Client"
                   value={editProjectForm.clientId}
                   onChange={(e) => {
                     const selected = clientMasters.find((c) => c.id === e.target.value);
                     setEditProjectForm((p) => ({
                       ...p,
                       clientId: e.target.value,
-                      clientName: selected?.name || p.clientName,
+                      clientName: selected?.name || "",
                       location: selected?.location || p.location,
                     }));
                   }}
@@ -1492,9 +1474,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField label="Client Name" fullWidth value={editProjectForm.clientName} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientName: e.target.value }))} />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField label="Location" fullWidth value={editProjectForm.location} onChange={(e) => setEditProjectForm((p) => ({ ...p, location: e.target.value }))} />
@@ -1510,16 +1489,6 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                 <InputLabel>Assigned Engineers</InputLabel>
                 <Select multiple label="Assigned Engineers" value={editProjectForm.engineerIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, engineerIds: e.target.value }))}>
                   {engineers.map((u) => (
-                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth>
-                <InputLabel>Assigned Clients</InputLabel>
-                <Select multiple label="Assigned Clients" value={editProjectForm.clientUserIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientUserIds: e.target.value }))}>
-                  {clients.map((u) => (
                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                   ))}
                 </Select>

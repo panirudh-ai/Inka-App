@@ -52,6 +52,10 @@ export default function AdminView() {
   const PAGE_SIZE = 25;
   const MAX_RENDER_ROWS = 200;
   const [tab, setTab] = useState(0);
+  const [catSearch, setCatSearch] = useState("");
+  const [ptSearch, setPtSearch] = useState("");
+  const [brandSearch, setBrandSearch] = useState("");
+  const [modelSearch, setModelSearch] = useState("");
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -184,24 +188,24 @@ export default function AdminView() {
       api.get("/reference/users?role=engineer"),
       api.get("/reference/users?role=client"),
     ]);
-    setProjects(Array.isArray(p.data) ? p.data : p.data.data || []);
+    setProjects((Array.isArray(p.data) ? p.data : p.data.data || []).reverse());
     setProjectPagination(
       Array.isArray(p.data)
         ? { page: 1, totalPages: 1, total: p.data.length }
         : p.data.pagination || { page: 1, totalPages: 1, total: 0 }
     );
-    setCategories(c.data);
-    setProductTypes(pt.data);
-    setBrands(b.data);
-    setItems(i.data);
-    setUsers(Array.isArray(u.data) ? u.data : u.data.data || []);
+    setCategories([...c.data].reverse());
+    setProductTypes([...pt.data].reverse());
+    setBrands([...b.data].reverse());
+    setItems([...i.data].reverse());
+    setUsers((Array.isArray(u.data) ? u.data : u.data.data || []).reverse());
     setUserPagination(
       Array.isArray(u.data)
         ? { page: 1, totalPages: 1, total: u.data.length }
         : u.data.pagination || { page: 1, totalPages: 1, total: 0 }
     );
     setRecentActivity(a.data);
-    setClients(Array.isArray(cl.data) ? cl.data : cl.data.data || []);
+    setClients((Array.isArray(cl.data) ? cl.data : cl.data.data || []).reverse());
     setClientPagination(
       Array.isArray(cl.data)
         ? { page: 1, totalPages: 1, total: cl.data.length }
@@ -328,6 +332,41 @@ export default function AdminView() {
     const start = (productTypePage - 1) * productTypePageSize;
     return productTypes.slice(start, start + productTypePageSize);
   }, [productTypes, productTypePage]);
+
+  const filteredCategories = useMemo(() => {
+    if (!catSearch) return categories;
+    const q = catSearch.toLowerCase();
+    return categories.filter((c) => c.name.toLowerCase().includes(q));
+  }, [categories, catSearch]);
+
+  const filteredProductTypes = useMemo(() => {
+    if (!ptSearch) return null; // null = use pagination
+    const q = ptSearch.toLowerCase();
+    return productTypes.filter(
+      (pt) =>
+        pt.name.toLowerCase().includes(q) ||
+        (categories.find((c) => c.id === pt.category_id)?.name || "").toLowerCase().includes(q)
+    );
+  }, [productTypes, categories, ptSearch]);
+
+  const filteredBrands = useMemo(() => {
+    if (!brandSearch) return brands;
+    const q = brandSearch.toLowerCase();
+    return brands.filter((b) => b.name.toLowerCase().includes(q));
+  }, [brands, brandSearch]);
+
+  const filteredModels = useMemo(() => {
+    if (!modelSearch) return items;
+    const q = modelSearch.toLowerCase();
+    return items.filter(
+      (i) =>
+        (i.model_number || "").toLowerCase().includes(q) ||
+        (i.brand_name || "").toLowerCase().includes(q) ||
+        (i.product_type_name || "").toLowerCase().includes(q) ||
+        (i.category_name || "").toLowerCase().includes(q) ||
+        (i.full_name || "").toLowerCase().includes(q)
+    );
+  }, [items, modelSearch]);
 
   async function adminCreateCr() {
     if (!selectedProjectId) return;
@@ -778,7 +817,7 @@ export default function AdminView() {
                   <Grid size={{ xs: 12, md: 3 }}>
                     <TextField
                       select
-                      label="Client Master"
+                      label="Client"
                       size="small"
                       fullWidth
                       value={projectForm.clientId}
@@ -787,7 +826,7 @@ export default function AdminView() {
                         setProjectForm((p) => ({
                           ...p,
                           clientId: e.target.value,
-                          clientName: selected?.name || p.clientName,
+                          clientName: selected?.name || "",
                           location: selected?.location || p.location,
                         }));
                       }}
@@ -797,15 +836,6 @@ export default function AdminView() {
                         <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
                       ))}
                     </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 3 }}>
-                    <TextField
-                      label="Client Name"
-                      size="small"
-                      fullWidth
-                      value={projectForm.clientName}
-                      onChange={(e) => setProjectForm((p) => ({ ...p, clientName: e.target.value }))}
-                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 3 }}>
                     <TextField
@@ -851,21 +881,6 @@ export default function AdminView() {
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Assigned Client Users</InputLabel>
-                      <Select
-                        multiple
-                        label="Assigned Client Users"
-                        value={projectForm.clientUserIds}
-                        onChange={(e) => setProjectForm((p) => ({ ...p, clientUserIds: e.target.value }))}
-                      >
-                        {clientUsers.map((u) => (
-                          <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
                 </Grid>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
                   <FormControlLabel
@@ -885,7 +900,6 @@ export default function AdminView() {
                     disabled={
                       creatingProject ||
                       !projectForm.name.trim() ||
-                      !projectForm.clientName.trim() ||
                       !projectForm.location.trim() ||
                       !projectForm.startDate
                     }
@@ -1697,10 +1711,17 @@ export default function AdminView() {
               ))}
             </Stack>
             <Divider sx={{ my: 1.4 }} />
+            <TextField
+              size="small"
+              label="Search categories"
+              value={catSearch}
+              onChange={(e) => setCatSearch(e.target.value)}
+              sx={{ mb: 1.2, maxWidth: 320 }}
+            />
             <Table size="small">
               <TableHead><TableRow><TableCell>Name</TableCell><TableCell>Sequence</TableCell><TableCell>Active</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>
               <TableBody>
-                {categories.slice(0, MAX_RENDER_ROWS).map((c) => (
+                {filteredCategories.slice(0, MAX_RENDER_ROWS).map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>
                       <TextField
@@ -1738,11 +1759,9 @@ export default function AdminView() {
                 ))}
               </TableBody>
             </Table>
-            {categories.length > MAX_RENDER_ROWS ? (
-              <Typography variant="caption" color="text.secondary">
-                Showing first {MAX_RENDER_ROWS} of {categories.length} categories.
-              </Typography>
-            ) : null}
+            <Typography variant="caption" color="text.secondary">
+              Showing {Math.min(filteredCategories.length, MAX_RENDER_ROWS)} of {filteredCategories.length} categories{catSearch ? ` matching "${catSearch}"` : ""}.
+            </Typography>
           </Paper>
         )}
 
@@ -1758,26 +1777,27 @@ export default function AdminView() {
               <Button variant="contained" onClick={() => createProductType().catch(() => setNotice("Create product type failed"))}>Add</Button>
             </Stack>
             <Divider sx={{ my: 1.4 }} />
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-              <Button size="small" disabled={productTypePage <= 1} onClick={() => setProductTypePage((p) => Math.max(1, p - 1))}>
-                Prev
-              </Button>
-              <Typography variant="caption" color="text.secondary">
-                Page {productTypePage} / {productTypeTotalPages}
-              </Typography>
-              <Button
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
+              <TextField
                 size="small"
-                disabled={productTypePage >= productTypeTotalPages}
-                onClick={() => setProductTypePage((p) => Math.min(productTypeTotalPages, p + 1))}
-              >
-                Next
-              </Button>
+                label="Search product types"
+                value={ptSearch}
+                onChange={(e) => { setPtSearch(e.target.value); setProductTypePage(1); }}
+                sx={{ maxWidth: 320 }}
+              />
+              {!ptSearch && (
+                <>
+                  <Button size="small" disabled={productTypePage <= 1} onClick={() => setProductTypePage((p) => Math.max(1, p - 1))}>Prev</Button>
+                  <Typography variant="caption" color="text.secondary">Page {productTypePage} / {productTypeTotalPages}</Typography>
+                  <Button size="small" disabled={productTypePage >= productTypeTotalPages} onClick={() => setProductTypePage((p) => Math.min(productTypeTotalPages, p + 1))}>Next</Button>
+                </>
+              )}
             </Stack>
             <TableContainer className="admin-table-scroll">
               <Table size="small">
                 <TableHead><TableRow><TableCell>Name</TableCell><TableCell>Category</TableCell><TableCell>Active</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>
                 <TableBody>
-                  {pagedProductTypes.map((pt) => (
+                  {(filteredProductTypes || pagedProductTypes).map((pt) => (
                     <TableRow key={pt.id}>
                       <TableCell>
                         {editingProductTypeId === pt.id ? (
@@ -1834,7 +1854,7 @@ export default function AdminView() {
               </Table>
             </TableContainer>
             <Typography variant="caption" color="text.secondary">
-              Showing {pagedProductTypes.length} of {productTypes.length} product types.
+              Showing {(filteredProductTypes || pagedProductTypes).length} of {productTypes.length} product types{ptSearch ? ` matching "${ptSearch}"` : ""}.
             </Typography>
           </Paper>
         )}
@@ -1848,8 +1868,18 @@ export default function AdminView() {
               <Button variant="contained" onClick={() => createBrand().catch(() => setNotice("Create brand failed"))}>Add</Button>
             </Stack>
             <Divider sx={{ my: 1.4 }} />
+            <TextField
+              size="small"
+              label="Search brands"
+              value={brandSearch}
+              onChange={(e) => setBrandSearch(e.target.value)}
+              sx={{ mb: 1.2, maxWidth: 320 }}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+              Showing {filteredBrands.length} of {brands.length} brands{brandSearch ? ` matching "${brandSearch}"` : ""}.
+            </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {brands.map((b) => (
+              {filteredBrands.map((b) => (
                 <Stack key={b.id} direction="row" spacing={1} alignItems="center">
                   <TextField
                     size="small"
@@ -1919,6 +1949,18 @@ export default function AdminView() {
               </Grid>
             </Grid>
             <Divider sx={{ my: 1.4 }} />
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.2 }} flexWrap="wrap" useFlexGap>
+              <TextField
+                size="small"
+                label="Search models (name, brand, type, category)"
+                value={modelSearch}
+                onChange={(e) => setModelSearch(e.target.value)}
+                sx={{ minWidth: 320 }}
+              />
+              <Typography variant="caption" color="text.secondary">
+                Showing {Math.min(filteredModels.length, 100)} of {filteredModels.length} models{modelSearch ? ` matching "${modelSearch}"` : ""}.
+              </Typography>
+            </Stack>
             <TableContainer className="admin-table-scroll">
               <Table size="small">
                 <TableHead>
@@ -1933,7 +1975,7 @@ export default function AdminView() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {items.slice(0, 50).map((i) => (
+                  {filteredModels.slice(0, 100).map((i) => (
                     <TableRow key={i.id}>
                       <TableCell>{i.category_name}</TableCell>
                       <TableCell>{i.product_type_name}</TableCell>
@@ -2260,16 +2302,16 @@ export default function AdminView() {
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <FormControl fullWidth size="small">
-                <InputLabel>Client Master (Optional)</InputLabel>
+                <InputLabel>Client</InputLabel>
                 <Select
-                  label="Client Master (Optional)"
+                  label="Client"
                   value={editProjectForm.clientId}
                   onChange={(e) => {
                     const selected = clients.find((c) => c.id === e.target.value);
                     setEditProjectForm((p) => ({
                       ...p,
                       clientId: e.target.value,
-                      clientName: selected?.name || p.clientName,
+                      clientName: selected?.name || "",
                       location: selected?.location || p.location,
                     }));
                   }}
@@ -2280,9 +2322,6 @@ export default function AdminView() {
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField label="Client Name" size="small" fullWidth value={editProjectForm.clientName} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientName: e.target.value }))} />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField label="Location" size="small" fullWidth value={editProjectForm.location} onChange={(e) => setEditProjectForm((p) => ({ ...p, location: e.target.value }))} />
@@ -2298,16 +2337,6 @@ export default function AdminView() {
                 <InputLabel>Assigned Engineers</InputLabel>
                 <Select multiple label="Assigned Engineers" value={editProjectForm.engineerIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, engineerIds: e.target.value }))}>
                   {engineers.map((u) => (
-                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Assigned Client Users</InputLabel>
-                <Select multiple label="Assigned Client Users" value={editProjectForm.clientUserIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientUserIds: e.target.value }))}>
-                  {clientUsers.map((u) => (
                     <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
                   ))}
                 </Select>
