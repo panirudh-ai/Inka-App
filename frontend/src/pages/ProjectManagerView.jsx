@@ -866,13 +866,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
       </>
       )}
 
-      {outerTab === 0 && (
-      <>
       {viewMode === "dashboard" && (
-        <Button variant="outlined" sx={{ mb: 2 }} onClick={goBackToList}>
-          ← Back to Projects
-        </Button>
-      )}
+      <>
+      <Button variant="outlined" sx={{ mb: 2 }} onClick={goBackToList}>
+        ← Back to Projects
+      </Button>
       <Paper id="pm-project-dashboard" sx={{ p: 2.2, mb: 2 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }} justifyContent="space-between">
           <Typography variant="h6">Project Dashboard</Typography>

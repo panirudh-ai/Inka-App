@@ -1160,7 +1160,7 @@ export default function AdminView() {
           </Paper>
           )}
 
-          {selectedProjectId && selectedProjectDashboard?.project?.id === selectedProjectId && (
+          {viewMode === "dashboard" && selectedProjectId && selectedProjectDashboard?.project?.id === selectedProjectId && (
             <Paper id="admin-project-dashboard" sx={{ p: 2.2, mt: 2 }}>
               {/* Header — project selector + download report (mirrors PM) */}
               <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }} justifyContent="space-between">
@@ -1363,7 +1363,7 @@ export default function AdminView() {
             </Paper>
           )}
 
-          {selectedProjectId && selectedProjectDashboard?.project?.id === selectedProjectId && (
+          {viewMode === "dashboard" && selectedProjectId && selectedProjectDashboard?.project?.id === selectedProjectId && (
             <>
             <Paper sx={{ p: 1, mt: 2 }}>
               <Tabs value={adminInnerTab} onChange={(_, v) => setAdminInnerTab(v)} variant="scrollable" allowScrollButtonsMobile scrollButtons="auto">
