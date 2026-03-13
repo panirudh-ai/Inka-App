@@ -1,53 +1,63 @@
 import { createTheme, responsiveFontSizes, alpha } from "@mui/material/styles";
 
-// ── Notion-inspired design tokens ────────────────────────────────────────────
+// ── CodeSandbox-accurate design tokens ───────────────────────────────────────
+// CSB palette: neon yellow #E9FF52 + ash grays on deep-dark backgrounds
 export const G8 = {
-  // Dark palette — Notion dark
-  black:   "#191919",
-  black2:  "#202020",
-  black3:  "#2F2F2F",
-  gray:    "#454545",
-  // Text
-  offWhite:    "rgba(255,255,255,0.87)",
-  muted:       "rgba(255,255,255,0.46)",
-  dim:         "rgba(255,255,255,0.24)",
-  // Light palette
-  cream:       "#FFFFFF",
-  cream2:      "#F7F7F5",
-  cream3:      "#EFEFED",
-  // Brand accent — warm orange
-  orange:      "#E07B54",
-  orangeDim:   "#C4612D",
-  orangeLight: "#F5A689",
+  // Deep dark — CSB exact backgrounds
+  black:   "#151515",   // CSB body bg
+  black2:  "#1C1C1C",   // CSB panel / card
+  black3:  "#252525",   // CSB elevated surface
+  black4:  "#2E2E2E",   // CSB more elevated
+  gray:    "#3A3A3A",   // borders / dividers (opaque)
+
+  // Ash text scale — CSB's gray palette
+  offWhite: "#EBEBEB",          // primary text
+  muted:    "#808080",          // secondary / ash
+  dim:      "#555555",          // placeholder / disabled
+
+  // Light palette (for light mode)
+  cream:   "#FFFFFF",
+  cream2:  "#F5F5F5",
+  cream3:  "#EBEBEB",
+
+  // CSB Signature Yellow — THE brand accent
+  orange:      "#E9FF52",   // neon yellow (primary)  contrastText = #151515
+  orangeDim:   "#C8D900",   // hover / darker yellow
+  orangeLight: "#F2FF85",   // tint / lighter yellow
+
+  // Ash accent for secondary roles / info
+  purple:     "#A0A0A0",    // ash silver (secondary accent)
+  purpleDark: "#686868",
+
   // Borders
-  warmBorder:  "rgba(55,53,47,0.09)",
-  warmBorder2: "rgba(55,53,47,0.16)",
-  darkBorder:  "rgba(255,255,255,0.082)",
-  darkBorder2: "rgba(255,255,255,0.135)",
+  warmBorder:  "rgba(0,0,0,0.09)",
+  warmBorder2: "rgba(0,0,0,0.16)",
+  darkBorder:  "rgba(255,255,255,0.06)",
+  darkBorder2: "rgba(255,255,255,0.11)",
+
   // Overlay
-  overlay: "rgba(0,0,0,0.65)",
+  overlay: "rgba(0,0,0,0.85)",
 };
 
-// ── Multi-layer shadow system ─────────────────────────────────────────────────
-// Each level has 3 layers: ambient + directional + ring
+// ── Shadow system — deep dark with yellow neon glows ─────────────────────────
 const mkShadow = (dark) => dark
   ? {
-      xs:  `0 1px 2px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)`,
-      sm:  `0 1px 3px rgba(0,0,0,0.45), 0 3px 10px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.045)`,
-      md:  `0 2px 5px rgba(0,0,0,0.45), 0 6px 24px rgba(0,0,0,0.32), 0 16px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.05)`,
-      lg:  `0 4px 10px rgba(0,0,0,0.45), 0 12px 40px rgba(0,0,0,0.38), 0 32px 80px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)`,
-      xl:  `0 8px 20px rgba(0,0,0,0.50), 0 24px 80px rgba(0,0,0,0.42), 0 60px 120px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)`,
-      accent: `0 2px 6px ${alpha(G8.orange, 0.45)}, 0 8px 20px ${alpha(G8.orange, 0.2)}, 0 0 0 1px ${alpha(G8.orange, 0.22)}`,
-      inset: `inset 0 1px 2px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(0,0,0,0.15)`,
+      xs:  `0 1px 2px rgba(0,0,0,0.9),  0 0 0 1px rgba(255,255,255,0.04)`,
+      sm:  `0 1px 4px rgba(0,0,0,0.82), 0 4px 16px rgba(0,0,0,0.6),  0 0 0 1px rgba(255,255,255,0.045)`,
+      md:  `0 2px 8px rgba(0,0,0,0.85), 0 8px 32px rgba(0,0,0,0.62), 0 20px 56px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05)`,
+      lg:  `0 4px 16px rgba(0,0,0,0.88),0 16px 56px rgba(0,0,0,0.68),0 40px 96px rgba(0,0,0,0.4),  0 0 0 1px rgba(255,255,255,0.055)`,
+      xl:  `0 8px 32px rgba(0,0,0,0.9), 0 32px 96px rgba(0,0,0,0.72),0 72px 140px rgba(0,0,0,0.45),0 0 0 1px rgba(255,255,255,0.06)`,
+      accent: `0 2px 12px ${alpha(G8.orange, 0.55)}, 0 8px 28px ${alpha(G8.orange, 0.2)}, 0 0 0 1px ${alpha(G8.orange, 0.35)}`,
+      inset:  `inset 0 1px 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.3)`,
     }
   : {
-      xs:  `0 1px 2px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)`,
-      sm:  `0 1px 3px rgba(0,0,0,0.06), 0 3px 10px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.04)`,
-      md:  `0 2px 5px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.05), 0 16px 40px rgba(0,0,0,0.03), 0 0 0 1px rgba(0,0,0,0.05)`,
-      lg:  `0 4px 10px rgba(0,0,0,0.07), 0 12px 40px rgba(0,0,0,0.06), 0 32px 80px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06)`,
-      xl:  `0 8px 20px rgba(0,0,0,0.08), 0 24px 80px rgba(0,0,0,0.07), 0 60px 120px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.07)`,
-      accent: `0 2px 6px ${alpha(G8.orange, 0.3)}, 0 8px 20px ${alpha(G8.orange, 0.12)}, 0 0 0 1px ${alpha(G8.orange, 0.15)}`,
-      inset: `inset 0 1px 2px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.04)`,
+      xs:  `0 1px 2px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)`,
+      sm:  `0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.05)`,
+      md:  `0 2px 8px rgba(0,0,0,0.09), 0 8px 32px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.06)`,
+      lg:  `0 4px 16px rgba(0,0,0,0.1), 0 16px 56px rgba(0,0,0,0.08),0 0 0 1px rgba(0,0,0,0.07)`,
+      xl:  `0 8px 32px rgba(0,0,0,0.12),0 32px 96px rgba(0,0,0,0.09),0 0 0 1px rgba(0,0,0,0.08)`,
+      accent: `0 2px 12px ${alpha(G8.orangeDim, 0.35)}, 0 8px 28px ${alpha(G8.orangeDim, 0.14)}, 0 0 0 1px ${alpha(G8.orangeDim, 0.2)}`,
+      inset:  `inset 0 1px 4px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.04)`,
     };
 
 export function buildTheme(mode = "dark") {
@@ -59,19 +69,31 @@ export function buildTheme(mode = "dark") {
   const surface2 = isDark ? G8.black3  : G8.cream2;
   const border   = isDark ? G8.darkBorder  : G8.warmBorder;
   const border2  = isDark ? G8.darkBorder2 : G8.warmBorder2;
-  const text     = isDark ? G8.offWhite : "#37352F";
-  const muted    = isDark ? G8.muted    : "rgba(55,53,47,0.62)";
-  const hover    = isDark ? alpha("#fff", 0.055) : alpha("#000", 0.035);
+  const text     = isDark ? G8.offWhite : "#1A1A1A";
+  const muted    = isDark ? G8.muted    : "#666666";
+  const hover    = isDark ? alpha("#fff", 0.05) : alpha("#000", 0.04);
+
+  // CSB yellow on dark text (inverse for primary button)
+  const yellowText = "#151515";
 
   const theme = createTheme({
     palette: {
       mode,
-      primary:   { main: G8.orange, light: G8.orangeLight, dark: G8.orangeDim, contrastText: "#fff" },
-      secondary: { main: isDark ? "rgba(255,255,255,0.82)" : "#37352F", contrastText: isDark ? "#191919" : "#fff" },
-      success:   { main: "#3F9142", light: "rgba(63,145,66,0.12)" },
-      error:     { main: "#EB5757", light: "rgba(235,87,87,0.12)" },
-      warning:   { main: "#CB912F", light: "rgba(203,145,47,0.12)" },
-      info:      { main: "#2383E2", light: "rgba(35,131,226,0.12)" },
+      // Yellow as primary — dark text on yellow bg (CSB style)
+      primary: {
+        main:          G8.orange,
+        light:         G8.orangeLight,
+        dark:          G8.orangeDim,
+        contrastText:  yellowText,
+      },
+      secondary: {
+        main:         isDark ? G8.offWhite : "#1A1A1A",
+        contrastText: isDark ? "#151515"   : "#fff",
+      },
+      success:   { main: "#57C97A", light: "rgba(87,201,122,0.12)" },
+      error:     { main: "#F87171", light: "rgba(248,113,113,0.12)" },
+      warning:   { main: G8.orange, light: alpha(G8.orange, 0.12) },
+      info:      { main: "#6E9EFF", light: "rgba(110,158,255,0.12)" },
       background: { default: bg, paper: surface },
       text: {
         primary:   text,
@@ -87,27 +109,28 @@ export function buildTheme(mode = "dark") {
     },
 
     typography: {
-      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      // CSB uses Inter — clean, tight, developer-feel
+      fontFamily: '"Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
       fontWeightLight:   300,
       fontWeightRegular: 400,
       fontWeightMedium:  500,
       fontWeightBold:    600,
-      h1: { fontSize: "clamp(1.875rem, 4vw, 2.5rem)", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.2, color: text },
-      h2: { fontSize: "clamp(1.5rem, 3vw, 1.875rem)", fontWeight: 700, letterSpacing: "-0.025em", lineHeight: 1.25, color: text },
-      h3: { fontSize: "clamp(1.2rem, 2vw, 1.5rem)",   fontWeight: 600, letterSpacing: "-0.02em",  lineHeight: 1.3,  color: text },
-      h4: { fontSize: "1.125rem", fontWeight: 600, letterSpacing: "-0.015em", color: text },
-      h5: { fontSize: "1rem",     fontWeight: 600, letterSpacing: "-0.01em",  color: text },
-      h6: { fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.005em", color: text },
+      h1: { fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)", fontWeight: 700, letterSpacing: "-0.04em",  lineHeight: 1.15, color: text },
+      h2: { fontSize: "clamp(1.4rem,  2.8vw, 1.75rem)", fontWeight: 700, letterSpacing: "-0.03em",  lineHeight: 1.2,  color: text },
+      h3: { fontSize: "clamp(1.1rem,  2vw,   1.35rem)", fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.3,  color: text },
+      h4: { fontSize: "1.1rem",    fontWeight: 600, letterSpacing: "-0.02em",  color: text },
+      h5: { fontSize: "0.9875rem", fontWeight: 600, letterSpacing: "-0.015em", color: text },
+      h6: { fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "-0.01em",  color: text },
       subtitle1: { fontSize: "0.9375rem", fontWeight: 500, lineHeight: 1.55 },
       subtitle2: { fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.07em", textTransform: "uppercase", color: muted },
-      body1:  { fontSize: "0.9375rem", fontWeight: 400, lineHeight: 1.65, color: text },
-      body2:  { fontSize: "0.875rem",  fontWeight: 400, lineHeight: 1.6,  color: muted },
-      caption:  { fontSize: "0.8125rem", fontWeight: 400, color: muted, lineHeight: 1.5 },
+      body1:   { fontSize: "0.9375rem", fontWeight: 400, lineHeight: 1.65, color: text },
+      body2:   { fontSize: "0.875rem",  fontWeight: 400, lineHeight: 1.6,  color: muted },
+      caption: { fontSize: "0.8125rem", fontWeight: 400, color: muted, lineHeight: 1.5 },
       overline: { fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: muted },
-      button:   { fontSize: "0.875rem",  fontWeight: 500, letterSpacing: "-0.005em" },
+      button:   { fontSize: "0.875rem",  fontWeight: 600, letterSpacing: "-0.01em" },
     },
 
-    shape: { borderRadius: 6 },
+    shape: { borderRadius: 8 },
 
     shadows: [
       "none",
@@ -126,15 +149,15 @@ export function buildTheme(mode = "dark") {
         styleOverrides: {
           root: {
             backgroundColor: isDark
-              ? alpha(G8.black2, 0.92)
-              : alpha(G8.cream, 0.94),
+              ? alpha(G8.black2, 0.94)
+              : alpha(G8.cream, 0.95),
             backgroundImage: "none",
-            backdropFilter: "blur(20px) saturate(180%)",
-            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
             borderBottom: `1px solid ${border}`,
             boxShadow: isDark
-              ? `0 1px 0 rgba(255,255,255,0.05), 0 2px 12px rgba(0,0,0,0.3)`
-              : `0 1px 0 rgba(0,0,0,0.07), 0 2px 12px rgba(0,0,0,0.04)`,
+              ? `0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.6)`
+              : `0 1px 0 rgba(0,0,0,0.07), 0 4px 24px rgba(0,0,0,0.04)`,
             color: text,
           },
         },
@@ -146,7 +169,7 @@ export function buildTheme(mode = "dark") {
         styleOverrides: {
           root: {
             backgroundImage: "none",
-            backgroundColor: isDark ? alpha(G8.black2, 0.94) : G8.cream,
+            backgroundColor: isDark ? G8.black2 : G8.cream,
             border: `1px solid ${border}`,
             boxShadow: sh.sm,
             transition: "box-shadow 200ms ease, border-color 200ms ease",
@@ -167,11 +190,15 @@ export function buildTheme(mode = "dark") {
             backgroundColor: isDark ? G8.black2 : G8.cream,
             border: `1px solid ${border}`,
             boxShadow: sh.sm,
-            borderRadius: 8,
-            transition: "box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease",
+            borderRadius: 10,
+            transition: "box-shadow 220ms ease, transform 220ms ease, border-color 220ms ease",
             "&:hover": {
-              boxShadow: sh.md,
-              borderColor: isDark ? G8.darkBorder2 : G8.warmBorder2,
+              boxShadow: isDark
+                ? `${sh.md}, 0 0 0 1px ${alpha(G8.orange, 0.2)}`
+                : `${sh.md}, 0 0 0 1px ${alpha(G8.orangeDim, 0.18)}`,
+              borderColor: isDark
+                ? alpha(G8.orange, 0.25)
+                : alpha(G8.orangeDim, 0.2),
             },
           },
         },
@@ -183,33 +210,39 @@ export function buildTheme(mode = "dark") {
         styleOverrides: {
           root: {
             textTransform: "none",
-            fontWeight: 500,
-            borderRadius: 6,
-            letterSpacing: "-0.005em",
-            transition: "all 150ms ease",
-            "&:focus-visible": { outline: `2px solid ${G8.orange}`, outlineOffset: 2 },
+            fontWeight: 600,
+            borderRadius: 8,
+            letterSpacing: "-0.01em",
+            transition: "all 150ms cubic-bezier(0.16,1,0.3,1)",
+            "&:focus-visible": {
+              outline: `2px solid ${G8.orange}`,
+              outlineOffset: 2,
+              boxShadow: `0 0 0 4px ${alpha(G8.orange, 0.25)}`,
+            },
           },
-          sizeSmall:  { fontSize: "0.8125rem", padding: "4px 12px",  height: 28 },
-          sizeMedium: { fontSize: "0.875rem",  padding: "6px 16px",  height: 34 },
-          sizeLarge:  { fontSize: "0.9rem",    padding: "9px 22px",  height: 40 },
+          sizeSmall:  { fontSize: "0.8125rem", padding: "4px 12px",  height: 30 },
+          sizeMedium: { fontSize: "0.875rem",  padding: "6px 16px",  height: 36 },
+          sizeLarge:  { fontSize: "0.9rem",    padding: "9px 22px",  height: 42 },
+          // Yellow button — dark text on neon yellow (CSB exact style)
           containedPrimary: {
             backgroundColor: G8.orange,
-            color: "#fff",
-            boxShadow: `0 1px 2px ${alpha(G8.orange, 0.35)}, inset 0 1px 0 ${alpha("#fff", 0.15)}`,
+            color: yellowText,
+            boxShadow: `0 1px 3px ${alpha(G8.orange, 0.4)}, inset 0 1px 0 ${alpha("#fff", 0.2)}`,
             "&:hover": {
               backgroundColor: G8.orangeDim,
-              boxShadow: `0 2px 8px ${alpha(G8.orange, 0.45)}, 0 4px 16px ${alpha(G8.orange, 0.2)}, inset 0 1px 0 ${alpha("#fff", 0.12)}`,
+              boxShadow: `0 2px 12px ${alpha(G8.orange, 0.55)}, 0 6px 24px ${alpha(G8.orange, 0.22)}, inset 0 1px 0 ${alpha("#fff", 0.15)}`,
               transform: "translateY(-1px)",
             },
             "&:active": { transform: "translateY(0)", boxShadow: "none" },
           },
           containedSecondary: {
-            backgroundColor: isDark ? alpha("#fff", 0.1) : alpha("#37352F", 0.07),
+            backgroundColor: isDark ? alpha("#fff", 0.08) : alpha("#1A1A1A", 0.06),
             color: text,
-            boxShadow: `0 0 0 1px ${border2}, 0 1px 2px rgba(0,0,0,0.1)`,
+            border: `1px solid ${border2}`,
+            boxShadow: sh.xs,
             "&:hover": {
-              backgroundColor: isDark ? alpha("#fff", 0.16) : alpha("#37352F", 0.12),
-              boxShadow: `0 0 0 1px ${border2}, 0 2px 6px rgba(0,0,0,0.12)`,
+              backgroundColor: isDark ? alpha("#fff", 0.13) : alpha("#1A1A1A", 0.1),
+              boxShadow: sh.sm,
               transform: "translateY(-1px)",
             },
           },
@@ -217,12 +250,12 @@ export function buildTheme(mode = "dark") {
             borderColor: border2,
             color: text,
             backgroundColor: "transparent",
-            boxShadow: `0 1px 2px rgba(0,0,0,${isDark ? "0.3" : "0.04"})`,
+            boxShadow: sh.xs,
             "&:hover": {
               borderColor: G8.orange,
-              color: G8.orange,
+              color: isDark ? G8.orange : G8.orangeDim,
               backgroundColor: alpha(G8.orange, 0.06),
-              boxShadow: `0 1px 4px ${alpha(G8.orange, 0.2)}, 0 0 0 1px ${alpha(G8.orange, 0.2)}`,
+              boxShadow: `0 0 0 1px ${alpha(G8.orange, 0.3)}, 0 2px 8px ${alpha(G8.orange, 0.15)}`,
             },
           },
           text: {
@@ -235,10 +268,13 @@ export function buildTheme(mode = "dark") {
       MuiIconButton: {
         styleOverrides: {
           root: {
-            borderRadius: 6,
+            borderRadius: 8,
             color: muted,
             transition: "all 150ms ease",
-            "&:hover": { color: text, backgroundColor: hover },
+            "&:hover": {
+              color: G8.orange,
+              backgroundColor: alpha(G8.orange, 0.08),
+            },
           },
         },
       },
@@ -247,8 +283,8 @@ export function buildTheme(mode = "dark") {
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            borderRadius: 6,
-            backgroundColor: isDark ? alpha("#fff", 0.03) : alpha("#000", 0.02),
+            borderRadius: 8,
+            backgroundColor: isDark ? alpha("#000", 0.35) : alpha("#000", 0.02),
             fontSize: "0.9375rem",
             color: text,
             transition: "box-shadow 160ms ease",
@@ -257,18 +293,20 @@ export function buildTheme(mode = "dark") {
               borderColor: border2,
               transition: "border-color 160ms",
             },
-            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: alpha(G8.orange, 0.5) },
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: alpha(G8.orange, 0.45),
+            },
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
               borderColor: G8.orange,
               borderWidth: 1.5,
             },
             "&.Mui-focused": {
-              boxShadow: `0 0 0 3px ${alpha(G8.orange, 0.14)}, ${sh.inset}`,
+              boxShadow: `0 0 0 3px ${alpha(G8.orange, 0.18)}, 0 0 16px ${alpha(G8.orange, 0.08)}, ${sh.inset}`,
             },
           },
           input: {
             padding: "8px 12px",
-            "&::placeholder": { color: muted, opacity: 1 },
+            "&::placeholder": { color: G8.dim, opacity: 1 },
           },
           sizeSmall: { "& input": { padding: "6px 10px" } },
         },
@@ -277,7 +315,7 @@ export function buildTheme(mode = "dark") {
       MuiInputLabel: {
         styleOverrides: {
           root: { fontSize: "0.875rem", color: muted },
-          shrunk: { fontSize: "0.8125rem", fontWeight: 500 },
+          shrunk: { fontSize: "0.8125rem", fontWeight: 500, color: isDark ? G8.offWhite : "#1A1A1A" },
         },
       },
 
@@ -293,12 +331,12 @@ export function buildTheme(mode = "dark") {
           root: {
             fontSize: "0.875rem",
             color: text,
-            borderRadius: 4,
+            borderRadius: 6,
             "&:hover": { backgroundColor: hover },
             "&.Mui-selected": {
-              backgroundColor: alpha(G8.orange, 0.1),
-              color: G8.orange,
-              "&:hover": { backgroundColor: alpha(G8.orange, 0.14) },
+              backgroundColor: alpha(G8.orange, isDark ? 0.12 : 0.08),
+              color: isDark ? G8.orange : G8.orangeDim,
+              "&:hover": { backgroundColor: alpha(G8.orange, isDark ? 0.18 : 0.12) },
             },
           },
         },
@@ -308,10 +346,10 @@ export function buildTheme(mode = "dark") {
       MuiTableContainer: {
         styleOverrides: {
           root: {
-            borderRadius: 8,
+            borderRadius: 10,
             border: `1px solid ${border}`,
             boxShadow: sh.sm,
-            backgroundColor: isDark ? alpha(G8.black2, 0.7) : G8.cream,
+            backgroundColor: isDark ? alpha(G8.black2, 0.8) : G8.cream,
           },
         },
       },
@@ -331,7 +369,7 @@ export function buildTheme(mode = "dark") {
               textTransform: "uppercase",
               borderBottom: `1px solid ${border2}`,
               padding: "10px 16px",
-              backgroundColor: isDark ? alpha(G8.black, 0.6) : G8.cream2,
+              backgroundColor: isDark ? alpha(G8.black, 0.7) : G8.cream2,
             },
           },
         },
@@ -369,11 +407,12 @@ export function buildTheme(mode = "dark") {
       // ── Tabs ────────────────────────────────────────────────────────────
       MuiTabs: {
         styleOverrides: {
-          root: { minHeight: 38, borderBottom: `1px solid ${border}` },
+          root: { minHeight: 40, borderBottom: `1px solid ${border}` },
           indicator: {
             height: 2,
             backgroundColor: G8.orange,
             borderRadius: "2px 2px 0 0",
+            boxShadow: `0 0 8px ${alpha(G8.orange, 0.6)}, 0 0 16px ${alpha(G8.orange, 0.2)}`,
           },
         },
       },
@@ -384,12 +423,12 @@ export function buildTheme(mode = "dark") {
             textTransform: "none",
             fontWeight: 400,
             fontSize: "0.875rem",
-            minHeight: 38,
-            padding: "6px 14px",
+            minHeight: 40,
+            padding: "6px 16px",
             color: muted,
-            letterSpacing: "-0.005em",
+            letterSpacing: "-0.01em",
             transition: "color 150ms",
-            "&.Mui-selected": { color: text, fontWeight: 500 },
+            "&.Mui-selected": { color: isDark ? G8.orange : G8.orangeDim, fontWeight: 600 },
             "&:hover:not(.Mui-selected)": { color: text },
           },
         },
@@ -399,35 +438,24 @@ export function buildTheme(mode = "dark") {
       MuiChip: {
         styleOverrides: {
           root: {
-            borderRadius: 4,
+            borderRadius: 6,
             fontWeight: 500,
             fontSize: "0.75rem",
             height: 22,
             letterSpacing: "-0.005em",
           },
           colorPrimary: {
-            backgroundColor: alpha(G8.orange, isDark ? 0.18 : 0.1),
-            color: isDark ? G8.orangeLight : G8.orangeDim,
+            backgroundColor: isDark ? alpha(G8.orange, 0.14) : alpha(G8.orangeDim, 0.1),
+            color: isDark ? G8.orange : G8.orangeDim,
+            boxShadow: isDark ? `0 0 0 1px ${alpha(G8.orange, 0.2)}` : undefined,
           },
-          colorSuccess: {
-            backgroundColor: "rgba(63,145,66,0.12)",
-            color: isDark ? "#6FCF73" : "#2D7D30",
-          },
-          colorError: {
-            backgroundColor: "rgba(235,87,87,0.12)",
-            color: isDark ? "#F28B82" : "#C62828",
-          },
-          colorWarning: {
-            backgroundColor: "rgba(203,145,47,0.12)",
-            color: isDark ? "#F2C55C" : "#A56B00",
-          },
-          colorInfo: {
-            backgroundColor: "rgba(35,131,226,0.12)",
-            color: isDark ? "#70B5F9" : "#1565C0",
-          },
+          colorSuccess: { backgroundColor: "rgba(87,201,122,0.12)",  color: isDark ? "#57C97A" : "#1A7A3C" },
+          colorError:   { backgroundColor: "rgba(248,113,113,0.12)", color: isDark ? "#F87171" : "#C62828" },
+          colorWarning: { backgroundColor: alpha(G8.orange, 0.12),   color: isDark ? G8.orange : G8.orangeDim },
+          colorInfo:    { backgroundColor: "rgba(110,158,255,0.12)", color: isDark ? "#6E9EFF" : "#2046B0" },
           colorSecondary: { backgroundColor: border, color: muted },
-          outlined:       { borderColor: border2, backgroundColor: "transparent" },
-          sizeSmall:      { height: 20, fontSize: "0.7rem" },
+          outlined:  { borderColor: border2, backgroundColor: "transparent" },
+          sizeSmall: { height: 20, fontSize: "0.7rem" },
           deleteIcon: { color: `${muted} !important`, "&:hover": { color: `${text} !important` } },
         },
       },
@@ -436,13 +464,13 @@ export function buildTheme(mode = "dark") {
       MuiDialog: {
         styleOverrides: {
           paper: {
-            borderRadius: 10,
+            borderRadius: 12,
             border: `1px solid ${border2}`,
             backgroundColor: isDark ? G8.black2 : G8.cream,
             boxShadow: isDark
-              ? `0 8px 20px rgba(0,0,0,0.55), 0 24px 80px rgba(0,0,0,0.45), 0 60px 120px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)`
-              : `0 8px 20px rgba(0,0,0,0.1), 0 24px 80px rgba(0,0,0,0.08), 0 60px 120px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.06)`,
-            backdropFilter: "blur(20px)",
+              ? `${sh.xl}, 0 0 80px ${alpha(G8.orange, 0.05)}`
+              : sh.xl,
+            backdropFilter: "blur(24px)",
           },
         },
       },
@@ -452,22 +480,22 @@ export function buildTheme(mode = "dark") {
           root: {
             fontSize: "1rem",
             fontWeight: 600,
-            padding: "18px 22px 14px",
+            padding: "20px 24px 16px",
             color: text,
             borderBottom: `1px solid ${border}`,
-            letterSpacing: "-0.01em",
+            letterSpacing: "-0.015em",
           },
         },
       },
 
       MuiDialogContent: {
-        styleOverrides: { root: { padding: "18px 22px" } },
+        styleOverrides: { root: { padding: "20px 24px" } },
       },
 
       MuiDialogActions: {
         styleOverrides: {
           root: {
-            padding: "12px 22px 18px",
+            padding: "14px 24px 20px",
             gap: 8,
             borderTop: `1px solid ${border}`,
           },
@@ -477,8 +505,8 @@ export function buildTheme(mode = "dark") {
       MuiBackdrop: {
         styleOverrides: {
           root: {
-            backgroundColor: alpha("#000", 0.65),
-            backdropFilter: "blur(6px)",
+            backgroundColor: alpha("#000", 0.78),
+            backdropFilter: "blur(8px)",
           },
         },
       },
@@ -489,8 +517,8 @@ export function buildTheme(mode = "dark") {
         styleOverrides: {
           root: {
             border: `1px solid ${border}`,
-            borderRadius: "8px !important",
-            backgroundColor: isDark ? alpha(G8.black2, 0.85) : G8.cream,
+            borderRadius: "10px !important",
+            backgroundColor: isDark ? G8.black2 : G8.cream,
             marginBottom: 6,
             boxShadow: sh.xs,
             "&:before": { display: "none" },
@@ -502,17 +530,17 @@ export function buildTheme(mode = "dark") {
       MuiAccordionSummary: {
         styleOverrides: {
           root: {
-            minHeight: 44,
-            padding: "0 14px",
+            minHeight: 46,
+            padding: "0 16px",
             "&.Mui-expanded": { borderBottom: `1px solid ${border}` },
           },
-          content: { margin: "10px 0", fontWeight: 500, fontSize: "0.875rem" },
+          content: { margin: "12px 0", fontWeight: 500, fontSize: "0.875rem" },
           expandIconWrapper: { color: muted },
         },
       },
 
       MuiAccordionDetails: {
-        styleOverrides: { root: { padding: "14px 16px" } },
+        styleOverrides: { root: { padding: "16px" } },
       },
 
       // ── Divider ─────────────────────────────────────────────────────────
@@ -524,35 +552,18 @@ export function buildTheme(mode = "dark") {
       MuiAlert: {
         styleOverrides: {
           root: {
-            borderRadius: 6,
+            borderRadius: 8,
             fontSize: "0.875rem",
             border: "1px solid transparent",
             boxShadow: sh.xs,
           },
-          standardSuccess: {
-            backgroundColor: "rgba(63,145,66,0.1)",
-            color: isDark ? "#6FCF73" : "#2D7D30",
-            borderColor: "rgba(63,145,66,0.2)",
-          },
-          standardError: {
-            backgroundColor: "rgba(235,87,87,0.1)",
-            color: isDark ? "#F28B82" : "#C62828",
-            borderColor: "rgba(235,87,87,0.2)",
-          },
-          standardWarning: {
-            backgroundColor: "rgba(203,145,47,0.1)",
-            color: isDark ? "#F2C55C" : "#A56B00",
-            borderColor: "rgba(203,145,47,0.2)",
-          },
-          standardInfo: {
-            backgroundColor: "rgba(35,131,226,0.1)",
-            color: isDark ? "#70B5F9" : "#1565C0",
-            borderColor: "rgba(35,131,226,0.2)",
-          },
+          standardSuccess: { backgroundColor: "rgba(87,201,122,0.1)",  color: isDark ? "#57C97A" : "#1A7A3C", borderColor: "rgba(87,201,122,0.2)" },
+          standardError:   { backgroundColor: "rgba(248,113,113,0.1)", color: isDark ? "#F87171" : "#C62828", borderColor: "rgba(248,113,113,0.2)" },
+          standardWarning: { backgroundColor: alpha(G8.orange, 0.1),   color: isDark ? G8.orange : G8.orangeDim, borderColor: alpha(G8.orange, 0.2) },
+          standardInfo:    { backgroundColor: "rgba(110,158,255,0.1)", color: isDark ? "#6E9EFF" : "#2046B0", borderColor: "rgba(110,158,255,0.2)" },
         },
       },
 
-      // ── Snackbar ────────────────────────────────────────────────────────
       MuiSnackbar: {
         defaultProps: { anchorOrigin: { vertical: "bottom", horizontal: "right" } },
       },
@@ -561,15 +572,15 @@ export function buildTheme(mode = "dark") {
       MuiTooltip: {
         styleOverrides: {
           tooltip: {
-            backgroundColor: isDark ? G8.black3 : "#37352F",
-            color: "rgba(255,255,255,0.9)",
+            backgroundColor: isDark ? G8.black3 : "#1A1A1A",
+            color: G8.offWhite,
             fontSize: "0.75rem",
-            borderRadius: 5,
-            padding: "5px 9px",
+            borderRadius: 6,
+            padding: "5px 10px",
             boxShadow: sh.md,
             border: `1px solid ${border}`,
           },
-          arrow: { color: isDark ? G8.black3 : "#37352F" },
+          arrow: { color: isDark ? G8.black3 : "#1A1A1A" },
         },
       },
 
@@ -581,39 +592,40 @@ export function buildTheme(mode = "dark") {
             padding: 3,
             "&.Mui-checked": {
               transform: "translateX(16px)",
-              "& + .MuiSwitch-track": { opacity: 1, backgroundColor: G8.orange },
+              "& + .MuiSwitch-track": {
+                opacity: 1,
+                backgroundColor: G8.orange,
+                boxShadow: `0 0 8px ${alpha(G8.orange, 0.5)}`,
+              },
             },
           },
           thumb: {
             width: 16, height: 16,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.35)",
-            backgroundColor: "#fff",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
+            backgroundColor: isDark ? G8.offWhite : "#fff",
           },
           track: {
             borderRadius: 11,
-            backgroundColor: isDark ? alpha("#fff", 0.14) : alpha("#37352F", 0.18),
+            backgroundColor: isDark ? alpha("#fff", 0.12) : alpha("#1A1A1A", 0.18),
             opacity: 1,
             transition: "background 250ms",
           },
         },
       },
 
-      // ── FormControlLabel ─────────────────────────────────────────────────
       MuiFormControlLabel: {
         styleOverrides: {
           label: { fontSize: "0.875rem", color: text },
         },
       },
 
-      // ── CircularProgress ────────────────────────────────────────────────
       MuiCircularProgress: {
         defaultProps: { size: 24, thickness: 3.5 },
-        styleOverrides: { colorPrimary: { color: G8.orange } },
+        styleOverrides: { colorPrimary: { color: isDark ? G8.orange : G8.orangeDim } },
       },
 
-      // ── Collapse ────────────────────────────────────────────────────────
       MuiCollapse: {
-        styleOverrides: { root: { transition: "height 200ms cubic-bezier(0.4, 0, 0.2, 1)" } },
+        styleOverrides: { root: { transition: "height 200ms cubic-bezier(0.4,0,0.2,1)" } },
       },
 
       // ── CssBaseline ─────────────────────────────────────────────────────
@@ -636,8 +648,8 @@ export function buildTheme(mode = "dark") {
             backgroundColor: isDark ? alpha("#fff", 0.18) : alpha("#000", 0.22),
           },
           "::selection": {
-            backgroundColor: alpha(G8.orange, 0.25),
-            color: isDark ? "rgba(255,255,255,0.9)" : "#37352F",
+            backgroundColor: alpha(G8.orange, isDark ? 0.3 : 0.2),
+            color: isDark ? "#151515" : "#1A1A1A",
           },
         },
       },
