@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import AppToast from '../components/AppToast'
 import {
   Alert,
   Accordion,
@@ -1524,9 +1525,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast((p) => ({ ...p, open: false }))}>
-        <Alert severity={toast.severity}>{toast.text}</Alert>
-      </Snackbar>
+      <AppToast toast={toast} onClose={() => setToast((p) => ({ ...p, open: false }))} />
     </Box>
     </Fade>
   );

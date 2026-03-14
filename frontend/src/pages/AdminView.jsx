@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import AppToast from '../components/AppToast'
+import StatusTag from '../components/StatusTag'
 import {
   Accordion,
   AccordionDetails,
@@ -1622,9 +1624,7 @@ export default function AdminView() {
               </DialogActions>
             </Dialog>
 
-            <Snackbar open={adminToast.open} autoHideDuration={2500} onClose={() => setAdminToast((p) => ({ ...p, open: false }))}>
-              <Alert severity={adminToast.severity}>{adminToast.text}</Alert>
-            </Snackbar>
+            <AppToast toast={adminToast} onClose={() => setAdminToast((p) => ({ ...p, open: false }))} />
             </>
           )}
           </>
@@ -1916,7 +1916,7 @@ export default function AdminView() {
                       }))
                     }
                   />
-                  <Chip label={b.is_active ? "Active" : "Inactive"} color={b.is_active ? "primary" : "default"} onDelete={() => toggleBrand(b).catch(() => setNotice("Toggle failed"))} />
+                  <StatusTag label={b.is_active ? "Active" : "Inactive"} color={b.is_active ? "success" : "default"} onDelete={() => toggleBrand(b).catch(() => setNotice("Toggle failed"))} />
                   <Button size="small" onClick={() => saveBrand(b.id).catch(() => setNotice("Save failed"))}>Save</Button>
                   <Button size="small" color="error" onClick={() => deleteBrand(b.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
                 </Stack>
@@ -2210,7 +2210,7 @@ export default function AdminView() {
                       <TableRow key={p.id} hover>
                         <TableCell>{p.name}</TableCell>
                         <TableCell>{p.client_name || "-"}</TableCell>
-                        <TableCell><Chip label={p.status} size="small" /></TableCell>
+                        <TableCell><StatusTag label={p.status} size="sm" color={p.status === 'active' ? 'success' : p.status === 'completed' ? 'primary' : 'default'} /></TableCell>
                         <TableCell>{Number(p.visit_count || 0)}</TableCell>
                         <TableCell>
                           <Button

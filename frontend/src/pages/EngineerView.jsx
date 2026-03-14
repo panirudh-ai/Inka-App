@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import AppToast from '../components/AppToast'
 import {
   Alert,
   Box,
@@ -418,9 +419,7 @@ export default function EngineerView() {
         </Stack>
       )}
 
-      <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast((p) => ({ ...p, open: false }))}>
-        <Alert severity={toast.severity}>{toast.text}</Alert>
-      </Snackbar>
+      <AppToast toast={toast} onClose={() => setToast((p) => ({ ...p, open: false }))} />
     </Box>
   );
 }
