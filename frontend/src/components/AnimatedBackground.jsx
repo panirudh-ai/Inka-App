@@ -83,21 +83,25 @@ export default function AnimatedBackground({ isDark }) {
           size: 700, top: "-15%", left: "55%",
           color: `radial-gradient(circle, ${alpha(G8.orange, 0.18)} 0%, transparent 68%)`,
           animation: `${float1} 22s ease-in-out infinite`,
+          blur: 1,
         },
         {
           size: 900, top: "20%", left: "-20%",
           color: `radial-gradient(circle, ${alpha("#4a3060", 0.55)} 0%, transparent 65%)`,
           animation: `${float2} 28s ease-in-out infinite`,
+          blur: 1,
         },
         {
           size: 600, top: "55%", left: "65%",
           color: `radial-gradient(circle, ${alpha("#1e3a3a", 0.6)} 0%, transparent 65%)`,
           animation: `${float3} 19s ease-in-out infinite`,
+          blur: 1,
         },
         {
           size: 500, top: "70%", left: "15%",
           color: `radial-gradient(circle, ${alpha(G8.orange, 0.09)} 0%, transparent 65%)`,
           animation: `${float4} 24s ease-in-out infinite`,
+          blur: 1,
         },
       ]
     : [
@@ -105,21 +109,25 @@ export default function AnimatedBackground({ isDark }) {
           size: 700, top: "-15%", left: "55%",
           color: `radial-gradient(circle, ${alpha(G8.orange, 0.12)} 0%, transparent 68%)`,
           animation: `${float1} 22s ease-in-out infinite`,
+          blur: 1,
         },
         {
           size: 900, top: "20%", left: "-20%",
           color: `radial-gradient(circle, ${alpha("#c8b4a0", 0.45)} 0%, transparent 65%)`,
           animation: `${float2} 28s ease-in-out infinite`,
+          blur: 1,
         },
         {
           size: 600, top: "55%", left: "65%",
           color: `radial-gradient(circle, ${alpha("#a8c4b8", 0.35)} 0%, transparent 65%)`,
           animation: `${float3} 19s ease-in-out infinite`,
+          blur: 1,
         },
         {
           size: 500, top: "70%", left: "15%",
           color: `radial-gradient(circle, ${alpha(G8.orange, 0.07)} 0%, transparent 65%)`,
           animation: `${float4} 24s ease-in-out infinite`,
+          blur: 1,
         },
       ];
 
@@ -149,7 +157,7 @@ export default function AnimatedBackground({ isDark }) {
             background: orb.color,
             animation: orb.animation,
             willChange: "transform",
-            filter: "blur(1px)",
+            filter: `blur(${orb.blur}px)`,
           }}
         />
       ))}
