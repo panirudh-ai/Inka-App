@@ -1,4 +1,4 @@
-import { Grid2 as Grid, MenuItem, TextField } from "@mui/material";
+import { Select, SelectItem } from "@heroui/react";
 
 export default function HierarchySelector({
   categories,
@@ -31,65 +31,70 @@ export default function HierarchySelector({
       x.brand_id === value.brandId
   );
 
+  const selectClass = {
+    trigger: "border-[#E3E8EF] dark:border-[#1E3A5F] bg-white dark:bg-[#0D1B2E]/50 hover:border-[#635BFF] data-[focus=true]:border-[#635BFF] rounded-md h-9",
+    value: "text-sm text-[#1A1F36] dark:text-[#C9D7E8]",
+    label: "text-sm text-[#697386] dark:text-[#7B93AE]",
+  };
+
   return (
-    <Grid container spacing={2}>
-      <Grid size={{ xs: 12, md: 3 }}>
-        <TextField
-          select
-          label="Category"
-          fullWidth
-          value={value.categoryId || ""}
-          onChange={(e) =>
-            onChange({ categoryId: e.target.value, productTypeId: "", brandId: "", itemId: "" })
-          }
-        >
-          {categories.map((c) => (
-            <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-      <Grid size={{ xs: 12, md: 3 }}>
-        <TextField
-          select
-          label="Product Type"
-          fullWidth
-          value={value.productTypeId || ""}
-          onChange={(e) => onChange({ productTypeId: e.target.value, brandId: "", itemId: "" })}
-          disabled={!value.categoryId}
-        >
-          {filteredPT.map((pt) => (
-            <MenuItem key={pt.id} value={pt.id}>{pt.name}</MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-      <Grid size={{ xs: 12, md: 3 }}>
-        <TextField
-          select
-          label="Brand"
-          fullWidth
-          value={value.brandId || ""}
-          onChange={(e) => onChange({ brandId: e.target.value, itemId: "" })}
-          disabled={!value.productTypeId}
-        >
-          {filteredBrands.map((b) => (
-            <MenuItem key={b.id} value={b.id}>{b.name}</MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-      <Grid size={{ xs: 12, md: 3 }}>
-        <TextField
-          select
-          label="Model"
-          fullWidth
-          value={value.itemId || ""}
-          onChange={(e) => onChange({ itemId: e.target.value })}
-          disabled={!value.brandId}
-        >
-          {filteredItems.map((item) => (
-            <MenuItem key={item.id} value={item.id}>{item.model_number}</MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-    </Grid>
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <Select
+        label="Category"
+        size="sm"
+        variant="bordered"
+        selectedKeys={value.categoryId ? [value.categoryId] : []}
+        onChange={(e) =>
+          onChange({ categoryId: e.target.value, productTypeId: "", brandId: "", itemId: "" })
+        }
+        classNames={selectClass}
+      >
+        {categories.map((c) => (
+          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+        ))}
+      </Select>
+
+      <Select
+        label="Product Type"
+        size="sm"
+        variant="bordered"
+        isDisabled={!value.categoryId}
+        selectedKeys={value.productTypeId ? [value.productTypeId] : []}
+        onChange={(e) => onChange({ ...value, productTypeId: e.target.value, brandId: "", itemId: "" })}
+        classNames={selectClass}
+      >
+        {filteredPT.map((pt) => (
+          <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>
+        ))}
+      </Select>
+
+      <Select
+        label="Brand"
+        size="sm"
+        variant="bordered"
+        isDisabled={!value.productTypeId}
+        selectedKeys={value.brandId ? [value.brandId] : []}
+        onChange={(e) => onChange({ ...value, brandId: e.target.value, itemId: "" })}
+        classNames={selectClass}
+      >
+        {filteredBrands.map((b) => (
+          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+        ))}
+      </Select>
+
+      <Select
+        label="Model"
+        size="sm"
+        variant="bordered"
+        isDisabled={!value.brandId}
+        selectedKeys={value.itemId ? [value.itemId] : []}
+        onChange={(e) => onChange({ ...value, itemId: e.target.value })}
+        classNames={selectClass}
+      >
+        {filteredItems.map((item) => (
+          <SelectItem key={item.id} value={item.id}>{item.model_number}</SelectItem>
+        ))}
+      </Select>
+    </div>
   );
 }

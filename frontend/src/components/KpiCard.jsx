@@ -1,72 +1,36 @@
-import { Box, Card, CardContent, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-
 export default function KpiCard({ title, value, subtitle, color = "#635BFF" }) {
   return (
-    <Card
-      sx={{
-        position: "relative",
-        overflow: "hidden",
-        transition: "box-shadow 200ms, transform 200ms",
-        "&:hover": {
-          boxShadow: `0 4px 20px ${alpha(color, 0.18)}, 0 1px 4px rgba(10,37,64,0.06)`,
-          transform: "translateY(-1px)",
-        },
-      }}
+    <div
+      className="relative overflow-hidden bg-white dark:bg-[#0F2240] border border-[#E3E8EF] dark:border-[#1E3A5F] rounded-xl shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md group"
     >
       {/* Top accent line */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          borderRadius: "10px 10px 0 0",
-          background: `linear-gradient(90deg, ${color} 0%, ${alpha(color, 0.4)} 100%)`,
-        }}
+      <div
+        className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
+        style={{ background: `linear-gradient(90deg, ${color} 0%, ${color}66 100%)` }}
       />
 
-      <CardContent sx={{ pt: 2.2, pb: "18px !important" }}>
+      <div className="pt-4 pb-4 px-4">
         {/* Label */}
-        <Typography
-          variant="overline"
-          sx={{ color: "text.secondary", fontSize: "0.7rem", letterSpacing: "0.07em", display: "block", mb: 0.8 }}
-        >
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.07em] text-[#697386] dark:text-[#7B93AE] mb-2">
           {title}
-        </Typography>
+        </p>
 
         {/* Value */}
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            fontSize: { xs: "1.5rem", md: "1.75rem" },
-            color: "text.primary",
-            letterSpacing: "-0.02em",
-            lineHeight: 1.2,
-            mb: 0.8,
-          }}
-        >
+        <p className="text-3xl md:text-[1.75rem] font-bold tracking-tight text-[#1A1F36] dark:text-[#C9D7E8] mb-2 leading-tight">
           {value}
-        </Typography>
+        </p>
 
         {/* Subtitle with colour dot */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
-          <Box
-            sx={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              bgcolor: color,
-              flexShrink: 0,
-            }}
+        <div className="flex items-center gap-1.5">
+          <span
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: color }}
           />
-          <Typography variant="caption" sx={{ color: "text.secondary", lineHeight: 1.4 }}>
+          <span className="text-[0.8125rem] text-[#697386] dark:text-[#7B93AE] leading-tight">
             {subtitle}
-          </Typography>
-        </Box>
-      </CardContent>
-    </Card>
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

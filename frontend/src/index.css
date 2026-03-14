@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #635BFF;
+    --color-navy: #0A2540;
+    --color-ink: #1A1F36;
+    --color-muted: #697386;
+    --color-border: #E3E8EF;
+    --color-bg: #F6F9FC;
+    --color-surface: #FFFFFF;
+  }
+
+  html {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-[#F6F9FC] dark:bg-[#0D1B2E] text-[#1A1F36] dark:text-[#C9D7E8];
+  }
+}
+
+@layer components {
+  /* Section card wrapper */
+  .inka-card {
+    @apply bg-white dark:bg-[#0F2240] border border-[#E3E8EF] dark:border-[#1E3A5F] rounded-xl shadow-sm;
+  }
+
+  /* Section header */
+  .inka-section-title {
+    @apply text-[#0A2540] dark:text-[#C9D7E8] font-bold tracking-tight;
+  }
+
+  /* Status badge helpers */
+  .badge-green {
+    @apply bg-[#ECFDF5] text-[#1A9E5D] border border-[#1A9E5D]/20 rounded font-medium text-xs px-2 py-0.5;
+  }
+  .badge-red {
+    @apply bg-[#FFF1F3] text-[#DF1B41] border border-[#DF1B41]/20 rounded font-medium text-xs px-2 py-0.5;
+  }
+  .badge-amber {
+    @apply bg-[#FFFBEB] text-[#B7791F] border border-[#B7791F]/20 rounded font-medium text-xs px-2 py-0.5;
+  }
+  .badge-blue {
+    @apply bg-[#EFF6FF] text-[#0073E6] border border-[#0073E6]/20 rounded font-medium text-xs px-2 py-0.5;
+  }
+  .badge-indigo {
+    @apply bg-[#EEF2FF] text-[#635BFF] border border-[#635BFF]/20 rounded font-medium text-xs px-2 py-0.5;
+  }
+
+  /* Table styles */
+  .inka-table-head th {
+    @apply text-[#697386] font-semibold text-xs uppercase tracking-wide px-4 py-2.5 bg-[#F6F9FC] dark:bg-[#162B47] border-b border-[#E3E8EF] dark:border-[#1E3A5F];
+  }
+  .inka-table-body tr {
+    @apply border-b border-[#E3E8EF] dark:border-[#1E3A5F] hover:bg-[#F0F4F9] dark:hover:bg-[#162B47] transition-colors;
+  }
+  .inka-table-body td {
+    @apply px-4 py-2.5 text-sm text-[#1A1F36] dark:text-[#C9D7E8];
+  }
+
+  /* Input label */
+  .inka-label {
+    @apply block text-sm font-medium text-[#1A1F36] dark:text-[#C9D7E8] mb-1;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-[#E3E8EF] dark:bg-[#1E3A5F] rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-[#C1CCE4] dark:bg-[#425466];
+}
