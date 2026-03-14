@@ -47,15 +47,6 @@ router.get(
     );
     if (!project.rowCount) return res.status(404).json({ error: "Project not found" });
 
-    const summary = await pool.query(
-      `SELECT
-          COALESCE(SUM(quantity * rate), 0) AS total_scope_value,
-          COALESCE(SUM(delivered_quantity * rate), 0) AS total_delivered_value,
-          COALESCE(SUM((quantity - delivered_quantity) * rate), 0) AS total_balance_value
-       FROM project_bom_items
-       WHERE project_id = $1`,
-      [projectId]
-    );
     const bom = await pool.query(
       `SELECT c.name AS category_name, pt.name AS product_type_name, b.name AS brand_name,
               i.model_number, pbi.quantity, pbi.delivered_quantity, pbi.status
@@ -80,7 +71,6 @@ router.get(
     );
 
     const p = project.rows[0];
-    const s = summary.rows[0];
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="inka_report_${projectId}.pdf"`);
 
@@ -96,13 +86,6 @@ router.get(
       doc.text(`Drive Link: ${p.drive_link}`);
     }
     doc.text(`Status: ${p.status}`);
-    doc.moveDown(0.7);
-
-    doc.fontSize(13).text("Financial Summary");
-    doc.fontSize(10);
-    doc.text(`Scope Value: INR ${Number(s.total_scope_value || 0).toLocaleString()}`);
-    doc.text(`Delivered Value: INR ${Number(s.total_delivered_value || 0).toLocaleString()}`);
-    doc.text(`Balance Value: INR ${Number(s.total_balance_value || 0).toLocaleString()}`);
     doc.moveDown(0.7);
 
     doc.fontSize(13).text("Approved BOM");

@@ -113,7 +113,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   const [excelImportFile, setExcelImportFile] = useState(null);
   const [excelImporting, setExcelImporting] = useState(false);
   const [excelImportResult, setExcelImportResult] = useState(null);
-  const PAGE_SIZE = 25;
+  const PAGE_SIZE = 10;
   const [projectPage, setProjectPage] = useState(1);
   const [projectPagination, setProjectPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [clientPage, setClientPage] = useState(1);
@@ -190,7 +190,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
       setCrs(crRes.data);
       setDeliveries(deliveryRes.data);
       setActivity(activityRes.data);
-      const visitsRes = await api.get(`/projects/${pid}/visits`, { params: { paginated: true, page: 1, limit: 20 } }).catch(() => ({ data: { data: [] } }));
+      const visitsRes = await api.get(`/projects/${pid}/visits`, { params: { paginated: true, page: 1, limit: 10 } }).catch(() => ({ data: { data: [] } }));
       setVisits(Array.isArray(visitsRes.data) ? visitsRes.data : visitsRes.data.data || []);
       const visitSummaryRes = await api.get(`/projects/${pid}/visits/summary`).catch(() => ({ data: { totals: {}, byEngineer: [], byMonth: [] } }));
       setVisitSummary(visitSummaryRes.data || { totals: {}, byEngineer: [], byMonth: [] });
@@ -503,6 +503,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   return (
     <Fade in timeout={420}>
     <Box>
+      {viewMode !== "dashboard" && (
       <Grid container spacing={2.2} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
           <KpiCard title="Total Projects" value={projectPagination.total || projects.length} subtitle="Portfolio visibility" />
@@ -517,6 +518,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <KpiCard title="Item Master" value={masterData.items.length} subtitle="Model-level control" color="#f97316" />
         </Grid>
       </Grid>
+      )}
 
       {viewMode === "list" && (
       <Paper sx={{ mb: 2, p: 1 }}>

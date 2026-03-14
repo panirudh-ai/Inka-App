@@ -49,7 +49,7 @@ import { api } from "../api/client";
 export default function AdminView() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const PAGE_SIZE = 25;
+  const PAGE_SIZE = 10;
   const MAX_RENDER_ROWS = 200;
   const [tab, setTab] = useState(0);
   const [catSearch, setCatSearch] = useState("");
@@ -85,6 +85,8 @@ export default function AdminView() {
   const [editItem, setEditItem] = useState({});
   const [editingProductTypeId, setEditingProductTypeId] = useState(null);
   const [productTypePage, setProductTypePage] = useState(1);
+  const [brandPage, setBrandPage] = useState(1);
+  const [itemPage, setItemPage] = useState(1);
   const [projectPage, setProjectPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
   const [clientPage, setClientPage] = useState(1);
@@ -231,7 +233,7 @@ export default function AdminView() {
         })),
         api.get(`/projects/${projectId}/change-requests`).catch(() => ({ data: [] })),
         api.get(`/projects/${projectId}/deliveries`).catch(() => ({ data: [] })),
-        api.get(`/projects/${projectId}/visits`, { params: { paginated: true, page: 1, limit: 20 } }).catch(() => ({ data: { data: [] } })),
+        api.get(`/projects/${projectId}/visits`, { params: { paginated: true, page: 1, limit: 10 } }).catch(() => ({ data: { data: [] } })),
       ]);
       setSelectedProjectDashboard(dashboardRes.data);
       setSelectedProjectActivity(activityRes.data || []);
@@ -326,7 +328,7 @@ export default function AdminView() {
   }, [adminOpenCr?.id, selectedProjectDashboard?.bom?.length]);
 
   const filteredPT = productTypes.filter((x) => x.category_id === itemForm.categoryId);
-  const productTypePageSize = 50;
+  const productTypePageSize = 10;
   const productTypeTotalPages = Math.max(1, Math.ceil(productTypes.length / productTypePageSize));
   const pagedProductTypes = useMemo(() => {
     const start = (productTypePage - 1) * productTypePageSize;
@@ -354,6 +356,12 @@ export default function AdminView() {
     const q = brandSearch.toLowerCase();
     return brands.filter((b) => b.name.toLowerCase().includes(q));
   }, [brands, brandSearch]);
+  const brandPageSize = 10;
+  const brandTotalPages = Math.max(1, Math.ceil(brands.length / brandPageSize));
+  const pagedBrands = useMemo(() => {
+    const start = (brandPage - 1) * brandPageSize;
+    return brands.slice(start, start + brandPageSize);
+  }, [brands, brandPage]);
 
   const filteredModels = useMemo(() => {
     if (!modelSearch) return items;
@@ -367,6 +375,12 @@ export default function AdminView() {
         (i.full_name || "").toLowerCase().includes(q)
     );
   }, [items, modelSearch]);
+  const itemPageSize = 10;
+  const itemTotalPages = Math.max(1, Math.ceil(items.length / itemPageSize));
+  const pagedItems = useMemo(() => {
+    const start = (itemPage - 1) * itemPageSize;
+    return items.slice(start, start + itemPageSize);
+  }, [items, itemPage]);
 
   async function adminCreateCr() {
     if (!selectedProjectId) return;
@@ -738,12 +752,14 @@ export default function AdminView() {
           },
         }}
       >
+        {viewMode !== "dashboard" && (
         <Grid container spacing={2.2}>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Total Projects" value={projectPagination.total || projects.length} subtitle="Portfolio visibility" /></Grid>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Open CRs" value={openCrCount} subtitle="Single CR governance" color="#dc2626" /></Grid>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Categories" value={categories.length} subtitle="Structured scope hierarchy" color="#2563eb" /></Grid>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Item Master" value={items.length} subtitle="Model-level control" color="#f97316" /></Grid>
         </Grid>
+        )}
 
         {viewMode === "list" && (
         <Paper sx={{ mt: 2, p: 1 }}>
@@ -1868,18 +1884,27 @@ export default function AdminView() {
               <Button variant="contained" onClick={() => createBrand().catch(() => setNotice("Create brand failed"))}>Add</Button>
             </Stack>
             <Divider sx={{ my: 1.4 }} />
-            <TextField
-              size="small"
-              label="Search brands"
-              value={brandSearch}
-              onChange={(e) => setBrandSearch(e.target.value)}
-              sx={{ mb: 1.2, maxWidth: 320 }}
-            />
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.2 }} flexWrap="wrap" useFlexGap>
+              <TextField
+                size="small"
+                label="Search brands"
+                value={brandSearch}
+                onChange={(e) => { setBrandSearch(e.target.value); setBrandPage(1); }}
+                sx={{ maxWidth: 320 }}
+              />
+              {!brandSearch && (
+                <>
+                  <Button size="small" disabled={brandPage <= 1} onClick={() => setBrandPage((p) => Math.max(1, p - 1))}>Prev</Button>
+                  <Typography variant="caption" color="text.secondary">Page {brandPage} / {brandTotalPages}</Typography>
+                  <Button size="small" disabled={brandPage >= brandTotalPages} onClick={() => setBrandPage((p) => Math.min(brandTotalPages, p + 1))}>Next</Button>
+                </>
+              )}
+            </Stack>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-              Showing {filteredBrands.length} of {brands.length} brands{brandSearch ? ` matching "${brandSearch}"` : ""}.
+              Showing {brandSearch ? filteredBrands.length : Math.min(brandPageSize, brands.length - (brandPage - 1) * brandPageSize)} of {brands.length} brands{brandSearch ? ` matching "${brandSearch}"` : ""}.
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {filteredBrands.map((b) => (
+            <Stack direction="column" spacing={1}>
+              {(brandSearch ? filteredBrands : pagedBrands).map((b) => (
                 <Stack key={b.id} direction="row" spacing={1} alignItems="center">
                   <TextField
                     size="small"
@@ -1954,11 +1979,18 @@ export default function AdminView() {
                 size="small"
                 label="Search models (name, brand, type, category)"
                 value={modelSearch}
-                onChange={(e) => setModelSearch(e.target.value)}
+                onChange={(e) => { setModelSearch(e.target.value); setItemPage(1); }}
                 sx={{ minWidth: 320 }}
               />
+              {!modelSearch && (
+                <>
+                  <Button size="small" disabled={itemPage <= 1} onClick={() => setItemPage((p) => Math.max(1, p - 1))}>Prev</Button>
+                  <Typography variant="caption" color="text.secondary">Page {itemPage} / {itemTotalPages}</Typography>
+                  <Button size="small" disabled={itemPage >= itemTotalPages} onClick={() => setItemPage((p) => Math.min(itemTotalPages, p + 1))}>Next</Button>
+                </>
+              )}
               <Typography variant="caption" color="text.secondary">
-                Showing {Math.min(filteredModels.length, 100)} of {filteredModels.length} models{modelSearch ? ` matching "${modelSearch}"` : ""}.
+                Showing {modelSearch ? filteredModels.length : Math.min(itemPageSize, items.length - (itemPage - 1) * itemPageSize)} of {items.length} models{modelSearch ? ` matching "${modelSearch}"` : ""}.
               </Typography>
             </Stack>
             <TableContainer className="admin-table-scroll">
@@ -1975,7 +2007,7 @@ export default function AdminView() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredModels.slice(0, 100).map((i) => (
+                  {(modelSearch ? filteredModels : pagedItems).map((i) => (
                     <TableRow key={i.id}>
                       <TableCell>{i.category_name}</TableCell>
                       <TableCell>{i.product_type_name}</TableCell>
