@@ -58,6 +58,10 @@ export default function AdminView() {
   const [ptSearch, setPtSearch] = useState("");
   const [brandSearch, setBrandSearch] = useState("");
   const [modelSearch, setModelSearch] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [reportSearch, setReportSearch] = useState("");
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -145,6 +149,8 @@ export default function AdminView() {
     password: "Inka@123",
     isActive: true,
   });
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editUserForm, setEditUserForm] = useState({ name: "", email: "", password: "" });
   const [clientForm, setClientForm] = useState({
     name: "",
     location: "",
@@ -218,9 +224,6 @@ export default function AdminView() {
     setEngineers(eng.data);
     setClientUsers(cliUsers.data);
     const projectsRows = Array.isArray(p.data) ? p.data : p.data.data || [];
-    if (!selectedProjectId && projectsRows.length) {
-      setSelectedProjectId(projectsRows[0].id);
-    }
   }
 
   async function loadProjectDetails(projectId) {
@@ -336,6 +339,30 @@ export default function AdminView() {
     const start = (productTypePage - 1) * productTypePageSize;
     return productTypes.slice(start, start + productTypePageSize);
   }, [productTypes, productTypePage]);
+
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch) return projects;
+    const q = projectSearch.toLowerCase();
+    return projects.filter((p) => (p.name || "").toLowerCase().includes(q) || (p.client_name || "").toLowerCase().includes(q));
+  }, [projects, projectSearch]);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clients;
+    const q = clientSearch.toLowerCase();
+    return clients.filter((c) => (c.name || "").toLowerCase().includes(q) || (c.location || "").toLowerCase().includes(q) || (c.primary_contact_name || "").toLowerCase().includes(q));
+  }, [clients, clientSearch]);
+
+  const filteredUsers = useMemo(() => {
+    if (!userSearch) return users;
+    const q = userSearch.toLowerCase();
+    return users.filter((u) => (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q) || (u.role || "").toLowerCase().includes(q));
+  }, [users, userSearch]);
+
+  const filteredReports = useMemo(() => {
+    if (!reportSearch) return projects;
+    const q = reportSearch.toLowerCase();
+    return projects.filter((p) => (p.name || "").toLowerCase().includes(q) || (p.client_name || "").toLowerCase().includes(q));
+  }, [projects, reportSearch]);
 
   const filteredCategories = useMemo(() => {
     if (!catSearch) return categories;
@@ -798,6 +825,7 @@ export default function AdminView() {
             <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap spacing={1}>
               <Typography variant="h6">Projects</Typography>
               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <TextField size="small" label="Search projects" value={projectSearch} onChange={(e) => setProjectSearch(e.target.value)} sx={{ minWidth: 200 }} />
                 <FormControl size="small" sx={{ minWidth: 130 }}>
                   <InputLabel>Status</InputLabel>
                   <Select
@@ -949,7 +977,7 @@ export default function AdminView() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {projects.map((p) => (
+                  {filteredProjects.map((p) => (
                     <>
                       <TableRow
                         key={p.id}
@@ -1642,7 +1670,8 @@ export default function AdminView() {
               <FormControlLabel control={<Switch checked={clientForm.isActive} onChange={(e) => setClientForm((p) => ({ ...p, isActive: e.target.checked }))} />} label="Active" />
               <Button variant="contained" onClick={() => createClient().catch(() => setNotice("Create client failed"))}>Add</Button>
             </Stack>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+              <TextField size="small" label="Search clients" value={clientSearch} onChange={(e) => setClientSearch(e.target.value)} sx={{ minWidth: 220 }} />
               <Button size="small" disabled={clientPagination.page <= 1} onClick={() => setClientPage((p) => Math.max(1, p - 1))}>Prev</Button>
               <Typography variant="caption" color="text.secondary">
                 Page {clientPagination.page} / {clientPagination.totalPages}
@@ -1664,7 +1693,7 @@ export default function AdminView() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {clients.map((c) => (
+                  {filteredClients.map((c) => (
                     <TableRow key={c.id}>
                       <TableCell>
                         <TextField size="small" value={editClient[c.id]?.name ?? c.name} onChange={(e) => setEditClient((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), name: e.target.value } }))} />
@@ -2055,7 +2084,8 @@ export default function AdminView() {
         {tab === 6 && (
           <Paper sx={{ p: 2, mt: 1.5, overflowX: "auto" }}>
             <Typography variant="h6">Users & Roles</Typography>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+              <TextField size="small" label="Search users" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} sx={{ minWidth: 220 }} />
               <Button size="small" disabled={userPagination.page <= 1} onClick={() => setUserPage((p) => Math.max(1, p - 1))}>Prev</Button>
               <Typography variant="caption" color="text.secondary">
                 Page {userPagination.page} / {userPagination.totalPages}
@@ -2107,47 +2137,96 @@ export default function AdminView() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {users.map((u) => (
-                    <TableRow key={u.id}>
-                      <TableCell>{u.name}</TableCell>
-                      <TableCell>{u.email}</TableCell>
-                      <TableCell>
-                        <TextField
-                          select
-                          size="small"
-                          value={u.role}
-                          onChange={async (e) => {
-                            try {
-                              await api.patch(`/admin/users/${u.id}`, { role: e.target.value });
-                              await loadAll();
-                            } catch {
-                              setNotice("Role update failed");
-                            }
-                          }}
-                        >
-                          {["admin", "project_manager", "engineer", "client"].map((r) => (
-                            <MenuItem key={r} value={r}>{r}</MenuItem>
-                          ))}
-                        </TextField>
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={!!u.is_active}
-                          onChange={async () => {
-                            try {
-                              await api.patch(`/admin/users/${u.id}`, { isActive: !u.is_active });
-                              await loadAll();
-                            } catch {
-                              setNotice("Status update failed");
-                            }
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Button size="small" color="error" onClick={() => deleteUser(u.id).catch(() => setNotice("Delete user failed"))}>Delete</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredUsers.map((u) => {
+                    const isEditing = editingUserId === u.id;
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell>
+                          {isEditing
+                            ? <TextField size="small" value={editUserForm.name} onChange={(e) => setEditUserForm((p) => ({ ...p, name: e.target.value }))} sx={{ width: 150 }} />
+                            : u.name}
+                        </TableCell>
+                        <TableCell>
+                          {isEditing
+                            ? <TextField size="small" value={editUserForm.email} onChange={(e) => setEditUserForm((p) => ({ ...p, email: e.target.value }))} sx={{ width: 190 }} />
+                            : u.email}
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            select
+                            size="small"
+                            value={u.role}
+                            onChange={async (e) => {
+                              try {
+                                await api.patch(`/admin/users/${u.id}`, { role: e.target.value });
+                                await loadAll();
+                              } catch {
+                                setNotice("Role update failed");
+                              }
+                            }}
+                          >
+                            {["admin", "project_manager", "engineer", "client"].map((r) => (
+                              <MenuItem key={r} value={r}>{r}</MenuItem>
+                            ))}
+                          </TextField>
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={!!u.is_active}
+                            onChange={async () => {
+                              try {
+                                await api.patch(`/admin/users/${u.id}`, { isActive: !u.is_active });
+                                await loadAll();
+                              } catch {
+                                setNotice("Status update failed");
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {isEditing ? (
+                            <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                              <TextField
+                                size="small"
+                                placeholder="New password (optional)"
+                                type="password"
+                                value={editUserForm.password}
+                                onChange={(e) => setEditUserForm((p) => ({ ...p, password: e.target.value }))}
+                                sx={{ width: 180 }}
+                              />
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={async () => {
+                                  const payload = { name: editUserForm.name, email: editUserForm.email };
+                                  if (editUserForm.password) {
+                                    if (editUserForm.password.length < 6) { setAdminToast({ open: true, severity: "warning", text: "Password must be at least 6 characters" }); return; }
+                                    payload.password = editUserForm.password;
+                                  }
+                                  try {
+                                    await api.patch(`/admin/users/${u.id}`, payload);
+                                    setEditingUserId(null);
+                                    setAdminToast({ open: true, severity: "success", text: "User updated" });
+                                    await loadAll();
+                                  } catch {
+                                    setAdminToast({ open: true, severity: "error", text: "Update failed" });
+                                  }
+                                }}
+                              >
+                                Save
+                              </Button>
+                              <Button size="small" onClick={() => setEditingUserId(null)}>Cancel</Button>
+                            </Stack>
+                          ) : (
+                            <Stack direction="row" spacing={0.5}>
+                              <Button size="small" variant="outlined" onClick={() => { setEditingUserId(u.id); setEditUserForm({ name: u.name, email: u.email, password: "" }); }}>Edit</Button>
+                              <Button size="small" color="error" onClick={() => deleteUser(u.id).catch(() => setNotice("Delete user failed"))}>Delete</Button>
+                            </Stack>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -2163,7 +2242,8 @@ export default function AdminView() {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
               Select a project to download its PDF report.
             </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
+              <TextField size="small" label="Search projects" value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} sx={{ minWidth: 220 }} />
               <FormControl size="small" sx={{ minWidth: 280 }}>
                 <InputLabel>Project</InputLabel>
                 <Select
@@ -2171,7 +2251,7 @@ export default function AdminView() {
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
                 >
-                  {projects.map((p) => (
+                  {filteredReports.map((p) => (
                     <MenuItem key={p.id} value={p.id}>{p.name} — {p.client_name || "No client"}</MenuItem>
                   ))}
                 </Select>
@@ -2193,7 +2273,7 @@ export default function AdminView() {
                 Download PDF Report
               </Button>
             </Stack>
-            {projects.length > 0 && (
+            {filteredReports.length > 0 && (
               <TableContainer className="admin-table-scroll" sx={{ mt: 2 }}>
                 <Table size="small">
                   <TableHead>
@@ -2206,7 +2286,7 @@ export default function AdminView() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {projects.map((p) => (
+                    {filteredReports.map((p) => (
                       <TableRow key={p.id} hover>
                         <TableCell>{p.name}</TableCell>
                         <TableCell>{p.client_name || "-"}</TableCell>
