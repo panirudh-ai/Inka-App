@@ -21,8 +21,8 @@ const logoEnter = keyframes`
 
 // Logo icon pulses subtly on idle
 const logoPulse = keyframes`
-  0%,100% { box-shadow: 0 4px 16px ${alpha(G8.orange, 0.45)}; }
-  50%      { box-shadow: 0 4px 32px ${alpha(G8.orange, 0.75)}, 0 0 0 6px ${alpha(G8.orange, 0.1)}; }
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.85; }
 `;
 
 // Title text slides up
@@ -57,8 +57,8 @@ const glowPulse = keyframes`
 `;
 
 export default function LoginView({ onLogin }) {
-  const [email,    setEmail]    = useState("admin@inka.local");
-  const [password, setPassword] = useState("Inka@123");
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
   const [success,  setSuccess]  = useState(false);
@@ -92,7 +92,7 @@ export default function LoginView({ onLogin }) {
       <Box
         sx={{
           width: "100%",
-          maxWidth: 400,
+          maxWidth: 440,
           position: "relative",
           animation: `${cardEnter} 0.65s cubic-bezier(.22,1,.36,1) both`,
         }}
@@ -147,7 +147,7 @@ export default function LoginView({ onLogin }) {
           {/* ── Header ────────────────────────────────────────────────── */}
           <Box
             sx={{
-              px: 3.5, pt: 3.5, pb: 3,
+              px: 3.5, pt: 2.5, pb: 2,
               borderBottom: "1px solid",
               borderColor: "divider",
             }}
@@ -155,41 +155,21 @@ export default function LoginView({ onLogin }) {
             {/* Animated logo */}
             <Box
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.2,
-                mb: 2.8,
+                mb: 1.2,
                 animation: `${logoEnter} 0.7s cubic-bezier(.22,1,.36,1) 0.15s both`,
               }}
             >
               <Box
+                component="img"
+                src="/logo.png"
+                alt="INKA Casa Intelligente"
                 sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "10px",
-                  background: `linear-gradient(135deg, ${alpha(G8.orange, 0.85)} 0%, ${G8.orange} 100%)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  width: 120,
+                  height: "auto",
+                  mixBlendMode: "multiply",
                   animation: `${logoPulse} 3s ease-in-out 1s infinite`,
-                  flexShrink: 0,
                 }}
-              >
-                <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: 17, lineHeight: 1 }}>
-                  I
-                </Typography>
-              </Box>
-              <Typography
-                sx={{
-                  fontFamily: '"DM Serif Display", Georgia, serif',
-                  fontWeight: 400,
-                  fontSize: "1.3rem",
-                  letterSpacing: "-0.02em",
-                  color: "text.primary",
-                }}
-              >
-                INKA
-              </Typography>
+              />
             </Box>
 
             {/* Title — staggered slide-up */}
@@ -197,9 +177,9 @@ export default function LoginView({ onLogin }) {
               <Typography
                 sx={{
                   fontFamily: '"DM Serif Display", Georgia, serif',
-                  fontSize: "1.7rem",
+                  fontSize: "1.3rem",
                   fontWeight: 400,
-                  mb: 0.5,
+                  mb: 0.3,
                   color: "text.primary",
                   lineHeight: 1.2,
                 }}
@@ -213,7 +193,7 @@ export default function LoginView({ onLogin }) {
           </Box>
 
           {/* ── Form ──────────────────────────────────────────────────── */}
-          <Box sx={{ px: 3.5, py: 3 }}>
+          <Box sx={{ px: 3.5, py: 2 }}>
             {error && (
               <Alert
                 severity="error"
@@ -226,7 +206,7 @@ export default function LoginView({ onLogin }) {
               </Alert>
             )}
 
-            <Stack component="form" spacing={2.2} onSubmit={submit}>
+            <Stack component="form" spacing={1.5} onSubmit={submit}>
 
               {/* Email field */}
               <Box sx={{ animation: `${rowEnter} 0.5s cubic-bezier(.22,1,.36,1) 0.4s both` }}>
