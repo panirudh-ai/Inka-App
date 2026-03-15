@@ -25,9 +25,9 @@ export default function ClientView() {
   const grouped = useMemo(() => {
     const map = new Map();
     for (const row of dashboard?.bom || []) {
-      const floor = row.floor_label || "Unassigned";
-      if (!map.has(floor)) map.set(floor, []);
-      map.get(floor).push(row);
+      const category = row.category_name || "Uncategorised";
+      if (!map.has(category)) map.set(category, []);
+      map.get(category).push(row);
     }
     return Array.from(map.entries());
   }, [dashboard]);
@@ -132,9 +132,12 @@ export default function ClientView() {
         <Grid size={{ xs: 12, md: 8 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Approved BOM by System</Typography>
-            {grouped.map(([floor, rows]) => (
-              <Box key={floor} sx={{ mt: 1 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>Floor: {floor}</Typography>
+            {grouped.map(([category, rows]) => (
+              <Box key={category} sx={{ mt: 1.5 }}>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.8 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{category}</Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ bgcolor: "action.hover", px: 1, py: 0.2, borderRadius: 1 }}>{rows.length}</Typography>
+                </Stack>
                 <Stack spacing={0.8} sx={{ mt: 0.5 }}>
                   {rows.map((r) => (
                     <Paper key={r.id} sx={{ p: 1, bgcolor: "action.hover" }}>

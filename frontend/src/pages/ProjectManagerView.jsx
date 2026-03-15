@@ -136,9 +136,9 @@ export default function ProjectManagerView({ masterData, role = "project_manager
   const grouped = useMemo(() => {
     const map = new Map();
     for (const row of dashboard?.bom || []) {
-      const floor = row.floor_label || "Unassigned";
-      if (!map.has(floor)) map.set(floor, []);
-      map.get(floor).push(row);
+      const category = row.category_name || "Uncategorised";
+      if (!map.has(category)) map.set(category, []);
+      map.get(category).push(row);
     }
     return Array.from(map.entries());
   }, [dashboard]);
@@ -875,9 +875,13 @@ export default function ProjectManagerView({ masterData, role = "project_manager
       <Button variant="outlined" sx={{ mb: 2 }} onClick={goBackToList}>
         ← Back to Projects
       </Button>
-      <Paper id="pm-project-dashboard" sx={{ p: 2.2, mb: 2 }}>
+      <Paper id="pm-project-dashboard" sx={{ p: 0, mb: 2, borderRadius: 3, overflow: "hidden", border: "1px solid", borderColor: "divider" }}>
+        <Box sx={{ px: 2.5, pt: 2.5, pb: 2, background: (t) => t.palette.mode === "dark" ? "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.05) 100%)" : "linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(139,92,246,0.03) 100%)", borderBottom: "1px solid", borderColor: "divider" }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.2} alignItems={{ md: "center" }} justifyContent="space-between">
-          <Typography variant="h6">Project Dashboard</Typography>
+          <Box>
+            <Typography variant="overline" sx={{ fontSize: "0.62rem", letterSpacing: "0.14em", color: "primary.main", fontWeight: 600 }}>Project Overview</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: "-0.02em", lineHeight: 1.2 }}>Project Dashboard</Typography>
+          </Box>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} sx={{ width: { xs: "100%", md: "auto" } }}>
             <FormControl size="small" sx={{ minWidth: { sm: 260 }, width: { xs: "100%", sm: "auto" } }}>
               <InputLabel>Project</InputLabel>
@@ -888,8 +892,9 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               </Select>
             </FormControl>
             <Button
-              variant="outlined"
-              sx={{ width: { xs: "100%", sm: "auto" } }}
+              variant="contained"
+              disableElevation
+              sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2 }}
               disabled={!projectId}
               onClick={async () => {
                 if (!projectId) return;
@@ -906,23 +911,34 @@ export default function ProjectManagerView({ masterData, role = "project_manager
             </Button>
           </Stack>
         </Stack>
+        </Box>
 
-        <Stack direction="row" spacing={1} sx={{ mt: 1.2 }} flexWrap="wrap" useFlexGap>
-          <Chip label={`Open CR: ${openCr ? "Yes" : "No"}`} color={openCr ? "warning" : "success"} />
-          <Chip label={`Total BOM Value: INR ${Number(dashboard?.summary?.total_scope_value || 0).toLocaleString()}`} color="primary" variant="outlined" />
-          <Chip label={`Delivered Value: INR ${Number(dashboard?.summary?.total_delivered_value || 0).toLocaleString()}`} color="warning" variant="outlined" />
-          <Chip label={`Balance: INR ${Number(dashboard?.summary?.total_balance_value || 0).toLocaleString()}`} color="secondary" variant="outlined" />
-          <Chip label={`Visits: ${Number(dashboard?.summary?.visit_count || 0)}`} color="info" variant="outlined" />
-        </Stack>
+        {/* Summary metric cards */}
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, px: 2.5, py: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          {[
+            { label: "Change Request", value: openCr ? "Open" : "Clear", sub: openCr ? "Pending approval" : "All approved", color: openCr ? "#f97316" : "#22c55e" },
+            { label: "Total Scope", value: `₹${Number(dashboard?.summary?.total_scope_value || 0).toLocaleString()}`, sub: "Approved BOM value", color: "#6366f1" },
+            { label: "Delivered", value: `₹${Number(dashboard?.summary?.total_delivered_value || 0).toLocaleString()}`, sub: "Value on-site", color: "#8b5cf6" },
+            { label: "Balance", value: `₹${Number(dashboard?.summary?.total_balance_value || 0).toLocaleString()}`, sub: "Remaining value", color: "#ec4899" },
+            { label: "Site Visits", value: Number(dashboard?.summary?.visit_count || 0), sub: "Total logged", color: "#06b6d4" },
+          ].map(({ label, value, sub, color }) => (
+            <Box key={label} sx={{ flex: "1 1 140px", minWidth: 130, p: 1.8, borderRadius: 2, border: "1px solid", borderColor: "divider", borderLeft: `3px solid ${color}`, bgcolor: "background.paper" }}>
+              <Typography sx={{ fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "text.secondary", mb: 0.4 }}>{label}</Typography>
+              <Typography sx={{ fontSize: "1.15rem", fontWeight: 700, color, lineHeight: 1.25, mb: 0.3 }}>{value}</Typography>
+              <Typography sx={{ fontSize: "0.67rem", color: "text.disabled" }}>{sub}</Typography>
+            </Box>
+          ))}
+        </Box>
 
+        <Box sx={{ px: 2.5, pb: 2.5 }}>
         <BomStatusChart bom={dashboard?.bom || []} />
 
         {dashboard?.project ? (
-          <Paper sx={{ mt: 1.4, p: 1.4, bgcolor: "background.paper" }}>
-            <Grid container spacing={1}>
-              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Project</Typography><Typography variant="body2">{dashboard.project.name}</Typography></Grid>
-              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Client</Typography><Typography variant="body2">{dashboard.project.client_name}</Typography></Grid>
-              <Grid size={{ xs: 12, md: 3 }}><Typography variant="caption" color="text.secondary">Location</Typography><Typography variant="body2">{dashboard.project.location}</Typography></Grid>
+          <Paper sx={{ mt: 2, p: 2, borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+            <Grid container spacing={1.5}>
+              <Grid size={{ xs: 12, md: 3 }}><Typography sx={{ fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "text.secondary", mb: 0.3 }}>Project</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>{dashboard.project.name}</Typography></Grid>
+              <Grid size={{ xs: 12, md: 3 }}><Typography sx={{ fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "text.secondary", mb: 0.3 }}>Client</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>{dashboard.project.client_name}</Typography></Grid>
+              <Grid size={{ xs: 12, md: 3 }}><Typography sx={{ fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "text.secondary", mb: 0.3 }}>Location</Typography><Typography variant="body2" sx={{ fontWeight: 600 }}>{dashboard.project.location}</Typography></Grid>
               <Grid size={{ xs: 12, md: 3 }}>
                 <Typography variant="caption" color="text.secondary">Status</Typography>
                 <Select
@@ -977,8 +993,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                 ))}
               </Stack>
             ) : null}
-            <Divider sx={{ my: 1 }} />
-            <Typography variant="caption" color="text.secondary">Project Contacts</Typography>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+              <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#6366f1" }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Project Contacts</Typography>
+            </Box>
             <Stack spacing={0.8} sx={{ mt: 0.8 }}>
               {projectContacts.map((c, idx) => (
                 <Stack key={`contact-${idx}`} direction={{ xs: "column", md: "row" }} spacing={1}>
@@ -994,7 +1013,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                 <Button size="small" variant="contained" onClick={saveContacts}>Save Contacts</Button>
               </Stack>
             </Stack>
-            <Divider sx={{ my: 1 }} />
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+              <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#22c55e" }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Log Site Visit</Typography>
+            </Box>
             <TextField
               label="Visit Notes"
               value={visitNotes}
@@ -1005,69 +1028,104 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               sx={{ mb: 1 }}
             />
             <Button variant="contained" onClick={logVisit}>Log Site Visit</Button>
-            <Stack spacing={0.4} sx={{ mt: 1 }}>
+            <Stack spacing={0.8} sx={{ mt: 1.2 }}>
               {visits.slice(0, 5).map((v) => (
-                <Typography key={v.id} variant="caption" color="text.secondary">
-                  {new Date(v.created_at).toLocaleString()} | {v.engineer_name || "Engineer"} | {v.notes || "-"}
-                </Typography>
+                <Box key={v.id} sx={{ display: "flex", gap: 1.2, alignItems: "flex-start" }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#06b6d4", mt: "5px", flexShrink: 0 }} />
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3 }}>{v.notes || "Site visit logged"}</Typography>
+                    <Typography variant="caption" color="text.secondary">{new Date(v.created_at).toLocaleString()} · {v.engineer_name || "Engineer"}</Typography>
+                  </Box>
+                </Box>
               ))}
             </Stack>
-            <Divider sx={{ my: 1.5 }} />
-            <Typography variant="subtitle2" sx={{ mb: 0.8 }}>Visit Analytics</Typography>
-            <Stack direction="row" spacing={1} sx={{ mb: 1 }} flexWrap="wrap" useFlexGap>
-              <Chip label={`Total Visits: ${Number(visitSummary?.totals?.total_visits || 0)}`} color="primary" variant="outlined" size="small" />
-              <Chip label={`Engineers: ${Number(visitSummary?.totals?.engineer_count || 0)}`} color="info" variant="outlined" size="small" />
-              <Chip label={`First Visit: ${visitSummary?.totals?.first_visit_date || "-"}`} variant="outlined" size="small" />
-              <Chip label={`Last Visit: ${visitSummary?.totals?.last_visit_date || "-"}`} variant="outlined" size="small" />
-            </Stack>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+              <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#06b6d4" }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Visit Analytics</Typography>
+            </Box>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mb: 2 }}>
+              {[
+                { label: "Total Visits", value: Number(visitSummary?.totals?.total_visits || 0), color: "#6366f1" },
+                { label: "Engineers", value: Number(visitSummary?.totals?.engineer_count || 0), color: "#06b6d4" },
+                { label: "First Visit", value: visitSummary?.totals?.first_visit_date || "—", color: "#8b5cf6" },
+                { label: "Last Visit", value: visitSummary?.totals?.last_visit_date || "—", color: "#ec4899" },
+              ].map(({ label, value, color }) => (
+                <Box key={label} sx={{ flex: "1 1 120px", minWidth: 110, p: 1.8, borderRadius: 2, border: "1px solid", borderColor: "divider", borderTop: `3px solid ${color}`, textAlign: "center" }}>
+                  <Typography sx={{ fontSize: "1.3rem", fontWeight: 800, color, lineHeight: 1.2 }}>{value}</Typography>
+                  <Typography sx={{ fontSize: "0.67rem", color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.08em", mt: 0.3 }}>{label}</Typography>
+                </Box>
+              ))}
+            </Box>
             <Grid container spacing={1.5} sx={{ mb: 1 }}>
               <Grid size={{ xs: 12, md: 6 }}>
-                <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
-                  <Typography variant="caption" color="text.secondary">Engineer-wise Visits</Typography>
-                  <Table size="small" sx={{ mt: 0.5 }}>
-                    <TableHead><TableRow><TableCell>Engineer</TableCell><TableCell align="right">Visits</TableCell></TableRow></TableHead>
-                    <TableBody>
-                      {(visitSummary?.byEngineer || []).map((r) => (
-                        <TableRow key={r.engineer_id || r.engineer_name}>
-                          <TableCell>{r.engineer_name}</TableCell>
-                          <TableCell align="right">{r.visit_count}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <Paper sx={{ p: 1.8, borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+                  <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "text.secondary", mb: 1.2 }}>Engineer-wise Visits</Typography>
+                  <Stack spacing={1}>
+                    {(visitSummary?.byEngineer || []).map((r) => {
+                      const maxV = Math.max(...(visitSummary?.byEngineer || []).map((x) => x.visit_count), 1);
+                      return (
+                        <Box key={r.engineer_id || r.engineer_name}>
+                          <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.3 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{r.engineer_name}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: "#6366f1" }}>{r.visit_count}</Typography>
+                          </Stack>
+                          <Box sx={{ height: 6, borderRadius: 3, bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)", overflow: "hidden" }}>
+                            <Box sx={{ height: "100%", width: `${(r.visit_count / maxV) * 100}%`, bgcolor: "#6366f1", borderRadius: 3, transition: "width 0.5s ease" }} />
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
                 </Paper>
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <Paper sx={{ p: 1.2, bgcolor: "action.hover" }}>
-                  <Typography variant="caption" color="text.secondary">Month-wise Visits</Typography>
-                  <Table size="small" sx={{ mt: 0.5 }}>
-                    <TableHead><TableRow><TableCell>Month</TableCell><TableCell align="right">Visits</TableCell></TableRow></TableHead>
-                    <TableBody>
-                      {(visitSummary?.byMonth || []).map((r) => (
-                        <TableRow key={r.month_key}>
-                          <TableCell>{r.month_key}</TableCell>
-                          <TableCell align="right">{r.visit_count}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <Paper sx={{ p: 1.8, borderRadius: 2, border: "1px solid", borderColor: "divider" }}>
+                  <Typography sx={{ fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "text.secondary", mb: 1.2 }}>Month-wise Visits</Typography>
+                  <Stack spacing={1}>
+                    {(visitSummary?.byMonth || []).map((r) => {
+                      const maxV = Math.max(...(visitSummary?.byMonth || []).map((x) => x.visit_count), 1);
+                      return (
+                        <Box key={r.month_key}>
+                          <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.3 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{r.month_key}</Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: "#06b6d4" }}>{r.visit_count}</Typography>
+                          </Stack>
+                          <Box sx={{ height: 6, borderRadius: 3, bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)", overflow: "hidden" }}>
+                            <Box sx={{ height: "100%", width: `${(r.visit_count / maxV) * 100}%`, bgcolor: "#06b6d4", borderRadius: 3, transition: "width 0.5s ease" }} />
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
                 </Paper>
               </Grid>
             </Grid>
-            <Divider sx={{ my: 1.5 }} />
-            <Typography variant="subtitle2" sx={{ mb: 0.8 }}>Activity Feed</Typography>
-            <Stack spacing={0.6}>
-              {activity.slice(0, 8).map((a) => (
-                <Paper key={a.id} sx={{ p: 1.1, bgcolor: "action.hover" }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{a.action_type}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(a.created_at).toLocaleString()} {a.user_name ? `| ${a.user_name}` : ""}
-                  </Typography>
-                </Paper>
-              ))}
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+              <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#8b5cf6" }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Activity Feed</Typography>
+            </Box>
+            <Stack spacing={0}>
+              {activity.slice(0, 8).map((a, idx) => {
+                const actionColor = a.action_type?.includes("STATUS") ? "#3b82f6" : a.action_type?.includes("DELIVERY") ? "#22c55e" : a.action_type?.includes("CR") ? "#f97316" : "#8b5cf6";
+                return (
+                  <Box key={a.id} sx={{ display: "flex", gap: 1.5, position: "relative" }}>
+                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                      <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: actionColor, mt: "4px", zIndex: 1, flexShrink: 0 }} />
+                      {idx < Math.min(activity.length, 8) - 1 && <Box sx={{ width: 2, flex: 1, bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)", my: 0.3 }} />}
+                    </Box>
+                    <Box sx={{ pb: 1.5 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: actionColor, fontSize: "0.8rem" }}>{a.action_type?.replace(/_/g, " ")}</Typography>
+                      <Typography variant="caption" color="text.secondary">{new Date(a.created_at).toLocaleString()}{a.user_name ? ` · ${a.user_name}` : ""}</Typography>
+                    </Box>
+                  </Box>
+                );
+              })}
             </Stack>
           </Paper>
         ) : null}
+        </Box>
       </Paper>
 
       <Paper sx={{ p: 1 }}>
@@ -1089,10 +1147,13 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                 Add Item via CR
               </Button>
             </Stack>
-            {grouped.map(([floor, rows]) => (
-              <Accordion key={floor} sx={{ mb: 1 }} defaultExpanded>
+            {grouped.map(([category, rows]) => (
+              <Accordion key={category} sx={{ mb: 1 }} defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography sx={{ fontWeight: 600 }}>Floor: {floor}</Typography>
+                  <Stack direction="row" alignItems="center" spacing={1.2}>
+                    <Typography sx={{ fontWeight: 700 }}>{category}</Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ bgcolor: "action.hover", px: 1, py: 0.2, borderRadius: 1 }}>{rows.length} item{rows.length !== 1 ? "s" : ""}</Typography>
+                  </Stack>
                 </AccordionSummary>
                 <AccordionDetails>
                   <Grid container spacing={1}>

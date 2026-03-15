@@ -66,9 +66,9 @@ export default function EngineerView() {
   const grouped = useMemo(() => {
     const map = new Map();
     for (const row of dashboard?.bom || []) {
-      const floor = row.floor_label || "Unassigned";
-      if (!map.has(floor)) map.set(floor, []);
-      map.get(floor).push(row);
+      const category = row.category_name || "Uncategorised";
+      if (!map.has(category)) map.set(category, []);
+      map.get(category).push(row);
     }
     return Array.from(map.entries());
   }, [dashboard]);
@@ -282,9 +282,12 @@ export default function EngineerView() {
 
       {tab === 0 && (
         <Box sx={{ mt: 1.5 }}>
-          {grouped.map(([floor, rows]) => (
-            <Box key={floor} sx={{ mb: 1.5 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.8 }}>Floor: {floor}</Typography>
+          {grouped.map(([category, rows]) => (
+            <Box key={category} sx={{ mb: 1.5 }}>
+              <Stack direction="row" alignItems="center" spacing={1.2} sx={{ mb: 0.8 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{category}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ bgcolor: "action.hover", px: 1, py: 0.2, borderRadius: 1 }}>{rows.length} item{rows.length !== 1 ? "s" : ""}</Typography>
+              </Stack>
               <Grid container spacing={1.5}>
                 {rows.map((row, idx) => {
                   const balance = Number(row.quantity) - Number(row.delivered_quantity);

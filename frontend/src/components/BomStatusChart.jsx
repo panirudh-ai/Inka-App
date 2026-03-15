@@ -52,11 +52,11 @@ function ItemProgressRow({ item }) {
             ? stage.color
             : isCurrent
             ? stage.color
-            : theme.palette.mode === "dark" ? "#333" : "#e0e0e0";
+            : theme.palette.mode === "dark" ? "rgba(255,255,255,0.12)" : "#e0e0e0";
 
           const lineColor = isDone
             ? STAGES[idx].color
-            : theme.palette.mode === "dark" ? "#333" : "#e0e0e0";
+            : theme.palette.mode === "dark" ? "rgba(255,255,255,0.1)" : "#e0e0e0";
 
           return (
             <Box key={stage.key} sx={{ display: "flex", alignItems: "center", flex: idx < STAGES.length - 1 ? 1 : "none" }}>
@@ -197,7 +197,7 @@ export default function BomStatusChart({ bom = [] }) {
                       bom.filter((b) => b.status === "Work Yet to Start").length;
 
   return (
-    <Paper sx={{ mt: 2, p: 2 }}>
+    <Paper sx={{ mt: 2, p: 2, border: "1px solid", borderColor: "divider" }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
           BOM Progress Tracker
