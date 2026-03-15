@@ -261,6 +261,14 @@ export function buildTheme(mode = "dark") {
             color: muted,
             transition: "all 200ms cubic-bezier(.66,0,.34,1)",
             "&:hover": { color: text, backgroundColor: hover },
+            "&.MuiIconButton-colorError": {
+              color: isDark ? "#f87171" : "#dc2626",
+              "&:hover": { backgroundColor: alpha("#f87171", 0.1) },
+            },
+            "&.MuiIconButton-colorSuccess": {
+              color: isDark ? "#4ade80" : "#16a34a",
+              "&:hover": { backgroundColor: alpha("#4ade80", 0.1) },
+            },
           },
         },
       },

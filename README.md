@@ -242,7 +242,7 @@ Token payload:
 | Update BOM item status | — | — | ✓ | — |
 | Log site visits | — | — | ✓ | — |
 | View assigned projects | ✓ | ✓ | ✓ (own) | ✓ (own) |
-| Download PDF report | ✓ | ✓ | — | ✓ |
+| Download Excel report | ✓ | ✓ | — | ✓ |
 | View activity log | ✓ | ✓ | ✓ | ✓ (filtered) |
 | Google Drive upload | — | ✓ | — | — |
 
@@ -321,7 +321,7 @@ ProjectManagerView:
 │     └── Contacts section (editable)
 │
 ├── BOM tab
-│     ├── View all BOM items grouped by floor/location
+│     ├── View all BOM items grouped by Category (CCTV, WiFi, etc.)
 │     ├── Add item via HierarchySelector
 │     ├── Edit quantity / rate
 │     ├── Delete item (if not delivered)
@@ -352,7 +352,9 @@ ProjectManagerView:
 │     └── Full audit trail for this project
 │
 └── Reports
-      └── Download PDF (GET /api/projects/:id/report.pdf)
+      └── Download Excel (GET /api/projects/:id/report.xlsx)
+            3-sheet workbook: Project Info, Approved BOM, Deliveries
+            No financial/price data — safe to share with clients
 ```
 
 ### 6.4 Change Request Workflow
@@ -407,7 +409,7 @@ EngineerView:
 ├── Select project → tabs:
 │
 ├── BOM tab
-│     ├── Items grouped by floor/location
+│     ├── Items grouped by Category (CCTV, WiFi, Gate Automation, etc.)
 │     ├── Search by item name
 │     ├── Update item status via dropdown (11 statuses):
 │     │     Work Yet to Start → Position Marked → Piping Done →
@@ -441,7 +443,7 @@ ClientView (read-only):
 │     └── Contact details
 │
 ├── BOM tab
-│     ├── Items grouped by floor/location
+│     ├── Items grouped by Category (CCTV, WiFi, Gate Automation, etc.)
 │     ├── Delivery progress per item (delivered / total)
 │     └── Status badges (no edit allowed)
 │
@@ -455,7 +457,8 @@ ClientView (read-only):
 │     └── Filtered activity (no CR internals shown)
 │
 └── Download Report
-      └── GET /api/projects/:id/report.pdf (no financial data)
+      └── GET /api/projects/:id/report.xlsx (no financial data)
+            3-sheet Excel: Project Info, BOM (with status), Deliveries
 ```
 
 ### 6.7 Delivery Flow
@@ -482,28 +485,30 @@ Engineer or PM logs delivery:
    └── Logs activity entry
 ```
 
-### 6.8 PDF Report Flow
+### 6.8 Report Download Flow
 
 ```
-PM or Client clicks "Download Report":
+PM or Client clicks "Download Excel Report":
 
-1. GET /api/projects/:projectId/report.pdf
+1. GET /api/projects/:projectId/report.xlsx
    (Authorization: Bearer token required)
 
-2. Backend (reports.js):
+2. Backend (reports.js) — Excel generation:
    ├── Fetches project info
-   ├── Fetches BOM items with delivery progress
-   ├── Fetches site visit summary
-   └── Builds PDF using PDFKit:
-       ├── Header (project name, client, date)
-       ├── BOM table (item, qty, delivered, status)
-       ├── Site visit summary
-       └── NO financial/price data (shareable with clients)
+   ├── Fetches approved BOM items with status + delivery progress
+   ├── Fetches deliveries log
+   └── Builds 3-sheet workbook using xlsx package:
+       ├── Sheet 1: "Project Info"  (name, client, location, status, date)
+       ├── Sheet 2: "Approved BOM"  (brand, model, qty, delivered, balance, status)
+       ├── Sheet 3: "Deliveries"    (item, qty, engineer, notes, timestamp IST)
+       └── NO financial/price data (safe to share with clients)
 
-3. Response: PDF binary stream
-   Content-Type: application/pdf
-   Content-Disposition: attachment; filename="report.pdf"
+3. Response: Binary Excel buffer
+   Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+   Content-Disposition: attachment; filename="inka_report_<projectId>.xlsx"
 ```
+
+> Legacy PDF endpoint (`/report.pdf`) is still present for backward compatibility.
 
 ### 6.9 Excel Import Flow
 
@@ -590,6 +595,7 @@ On reconnect:
 | `HierarchySelector.jsx` | 4-step cascading selector: Category → Product Type → Brand → Item. Used when adding items to BOM or CR. |
 | `KpiCard.jsx` | Summary card showing icon + numeric value + label. Used in dashboard views. Hidden on `viewMode === "dashboard"`. |
 | `StatusTag.jsx` | Tailwind pill badge. Props: `label`, `color` (success/warning/error/info/primary/secondary/default), `size` (sm/md), `onDelete`. |
+| `BomStatusChart.jsx` | BOM progress tracker. Shows a 7-stage dot-and-line progress row per item (Work Yet to Start → Installed ✓). Problem states (Wiring Rework, Not Working, etc.) render as a coloured warning badge. Includes a stacked pipeline summary bar + Done/In Progress/Issues KPI strip. Fully dark-theme aware via MUI `useTheme()`. |
 
 ### Theme (`theme.js`)
 
@@ -697,7 +703,8 @@ On reconnect:
 ### Reports
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/projects/:projectId/report.pdf` | Download PDF report |
+| GET | `/projects/:projectId/report.xlsx` | Download Excel report (3 sheets) |
+| GET | `/projects/:projectId/report.pdf` | Download PDF report (legacy) |
 
 ---
 
@@ -749,6 +756,7 @@ On reconnect:
 | `axios` | 1.7.7 | HTTP client |
 | `@ark-ui/react` | 5.34.1 | Headless/unstyled UI primitives |
 | `lucide-react` | 0.577.0 | Icon library (used alongside MUI icons) |
+| `recharts` | 3.8.0 | Chart library (available; BomStatusChart uses pure MUI instead) |
 | `tailwindcss` | 3.4.19 | Utility CSS (limited use, preflight disabled) |
 | `postcss` | — | CSS processor (Tailwind dependency) |
 | `autoprefixer` | — | Vendor prefix addition (PostCSS plugin) |
@@ -870,4 +878,7 @@ powershell -ExecutionPolicy Bypass -File scripts/import-excel.ps1 `
 - **Tailwind + MUI coexistence**: Tailwind's `preflight` is disabled in `tailwind.config.js` to prevent CSS reset from breaking MUI component styles.
 - **Password hashing**: Done entirely in PostgreSQL via `pgcrypto`. No bcrypt npm package needed on the Node side.
 - **Category Sequence Mode**: Per-project flag. When enabled, CR items must be added in the order defined by `categories.sequence_order` — useful for formal contracts requiring structured change documentation.
+- **BOM Grouping**: BOM items are grouped by `category_name` (e.g. CCTV, WiFi, Gate Automation) throughout all views. Category data comes from a SQL join on the `categories` table via the `/dashboard` endpoint.
+- **BOM Status Stages**: 7 ordered workflow stages (Work Yet to Start → Position Marked → Piping Done → Wiring Done → Wiring Checked OK → Installed - To Activate → Installed - Working) plus 4 problem states (Wiring Rework Required, Provision Not Provided, Position To Be Changed, Installed - Not Working).
+- **CRUD Action Icons**: All inline table/row actions use MUI `IconButton` + `Tooltip` with outlined icons: `EditOutlinedIcon` (primary), `CheckCircleOutlineIcon` (green/success), `DeleteOutlineIcon` (red/error), `HighlightOffIcon` (cancel). Dialog confirmation buttons use `Button` with `startIcon` for clarity.
 - **Logo**: Place `logo.png` in `frontend/public/`. It is used as the login page logo and browser favicon. Uses `mix-blend-mode: multiply` to remove white background on light themes.

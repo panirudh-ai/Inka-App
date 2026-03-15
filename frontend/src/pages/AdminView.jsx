@@ -37,6 +37,8 @@ import {
   TextField,
   Typography,
   Fade,
+  IconButton,
+  Tooltip,
   Zoom,
   useMediaQuery,
   useTheme,
@@ -44,6 +46,10 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import HierarchySelector from "../components/HierarchySelector";
 import KpiCard from "../components/KpiCard";
 import BomStatusChart from "../components/BomStatusChart";
@@ -1003,39 +1009,35 @@ export default function AdminView() {
                             >
                               {selectedProjectId === p.id ? "Close" : "Open"}
                             </Button>
-                            <Button
-                              size="small"
-                              color="primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditProjectId(p.id);
-                                setEditProjectForm({
-                                  name: p.name || "",
-                                  clientId: p.client_id || "",
-                                  clientName: p.client_name || "",
-                                  location: p.location || "",
-                                  driveLink: p.drive_link || "",
-                                  startDate: p.start_date ? p.start_date.slice(0, 10) : "",
-                                  engineerIds: p.engineer_ids || [],
-                                  clientUserIds: p.client_user_ids || [],
-                                  categorySequenceMode: !!p.category_sequence_mode,
-                                });
-                                setEditProjectOpen(true);
-                              }}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              size="small"
-                              color="error"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteProjectId(p.id);
-                                setDeleteProjectOpen(true);
-                              }}
-                            >
-                              Delete
-                            </Button>
+                            <Tooltip title="Edit project">
+                              <IconButton size="small" color="primary" sx={{ borderRadius: 1.5 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditProjectId(p.id);
+                                  setEditProjectForm({
+                                    name: p.name || "",
+                                    clientId: p.client_id || "",
+                                    clientName: p.client_name || "",
+                                    location: p.location || "",
+                                    driveLink: p.drive_link || "",
+                                    startDate: p.start_date ? p.start_date.slice(0, 10) : "",
+                                    engineerIds: p.engineer_ids || [],
+                                    clientUserIds: p.client_user_ids || [],
+                                    categorySequenceMode: !!p.category_sequence_mode,
+                                  });
+                                  setEditProjectOpen(true);
+                                }}
+                              ><EditOutlinedIcon fontSize="small" /></IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete project">
+                              <IconButton size="small" color="error" sx={{ borderRadius: 1.5 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteProjectId(p.id);
+                                  setDeleteProjectOpen(true);
+                                }}
+                              ><DeleteOutlineIcon fontSize="small" /></IconButton>
+                            </Tooltip>
                           </Stack>
                         </TableCell>
                       </TableRow>
@@ -1352,12 +1354,12 @@ export default function AdminView() {
                         <TextField size="small" label="Name" value={c.contactName || c.contact_name || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, contactName: e.target.value } : x))} />
                         <TextField size="small" label="Phone" value={c.phone || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, phone: e.target.value } : x))} />
                         <TextField size="small" label="Email" value={c.email || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, email: e.target.value } : x))} />
-                        <Button color="error" onClick={() => setAdminProjectContacts((prev) => prev.filter((_, i) => i !== idx))}>Remove</Button>
+                        <Tooltip title="Remove contact"><IconButton size="small" color="error" onClick={() => setAdminProjectContacts((prev) => prev.filter((_, i) => i !== idx))}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                       </Stack>
                     ))}
                     <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
                       <Button size="small" variant="outlined" onClick={() => setAdminProjectContacts((prev) => [...prev, { roleName: "Civil Engineer", contactName: "", phone: "", email: "", notes: "" }])}>Add Contact</Button>
-                      <Button size="small" variant="contained" onClick={() => adminSaveContacts().catch(() => setAdminToast({ open: true, severity: "error", text: "Save contacts failed" }))}>Save Contacts</Button>
+                      <Tooltip title="Save contacts"><IconButton color="success" onClick={() => adminSaveContacts().catch(() => setAdminToast({ open: true, severity: "error", text: "Save contacts failed" }))} sx={{ borderRadius: 1.5 }} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
                     </Stack>
                   </Stack>
 
@@ -1724,8 +1726,8 @@ export default function AdminView() {
                 </Grid>
               </DialogContent>
               <DialogActions>
-                <Button onClick={() => setAdminOpenAdd(false)}>Cancel</Button>
-                <Button variant="contained" onClick={() => adminAddBomItem().catch(() => setAdminToast({ open: true, severity: "error", text: "Add BOM item failed" }))}>Save</Button>
+                <Button onClick={() => setAdminOpenAdd(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
+                <Button variant="contained" color="success" startIcon={<CheckCircleOutlineIcon />} onClick={() => adminAddBomItem().catch(() => setAdminToast({ open: true, severity: "error", text: "Add BOM item failed" }))}>Save</Button>
               </DialogActions>
             </Dialog>
 
@@ -1756,17 +1758,17 @@ export default function AdminView() {
               <Button size="small" disabled={clientPagination.page >= clientPagination.totalPages} onClick={() => setClientPage((p) => p + 1)}>Next</Button>
             </Stack>
             <TableContainer className="admin-table-scroll" sx={{ mt: 1 }}>
-              <Table size="small">
+              <Table size="small" sx={{ minWidth: 900 }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Location</TableCell>
-                    <TableCell>Contact</TableCell>
-                    <TableCell>Phone</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Projects</TableCell>
-                    <TableCell>Active</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell sx={{ minWidth: 120 }}>Name</TableCell>
+                    <TableCell sx={{ minWidth: 110 }}>Location</TableCell>
+                    <TableCell sx={{ minWidth: 110 }}>Contact</TableCell>
+                    <TableCell sx={{ width: 120, minWidth: 120 }}>Phone</TableCell>
+                    <TableCell sx={{ minWidth: 140 }}>Email</TableCell>
+                    <TableCell sx={{ minWidth: 100 }}>Projects</TableCell>
+                    <TableCell sx={{ width: 80, whiteSpace: "nowrap" }}>Active</TableCell>
+                    <TableCell sx={{ width: 90, whiteSpace: "nowrap" }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1781,8 +1783,8 @@ export default function AdminView() {
                       <TableCell>
                         <TextField size="small" value={editClient[c.id]?.primaryContactName ?? c.primary_contact_name ?? ""} onChange={(e) => setEditClient((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactName: e.target.value } }))} />
                       </TableCell>
-                      <TableCell>
-                        <TextField size="small" value={editClient[c.id]?.primaryContactPhone ?? c.primary_contact_phone ?? ""} onChange={(e) => setEditClient((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactPhone: e.target.value } }))} />
+                      <TableCell sx={{ width: 130 }}>
+                        <TextField size="small" value={editClient[c.id]?.primaryContactPhone ?? c.primary_contact_phone ?? ""} onChange={(e) => setEditClient((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactPhone: e.target.value } }))} inputProps={{ style: { width: 110 } }} />
                       </TableCell>
                       <TableCell>
                         <TextField size="small" value={editClient[c.id]?.primaryContactEmail ?? c.primary_contact_email ?? ""} onChange={(e) => setEditClient((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactEmail: e.target.value } }))} />
@@ -1797,9 +1799,9 @@ export default function AdminView() {
                         <Switch checked={editClient[c.id]?.isActive ?? !!c.is_active} onChange={(e) => setEditClient((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), isActive: e.target.checked } }))} />
                       </TableCell>
                       <TableCell>
-                        <Stack direction="row" spacing={1}>
-                          <Button size="small" onClick={() => saveClient(c.id).catch(() => setNotice("Save client failed"))}>Save</Button>
-                          <Button size="small" color="error" onClick={() => deleteClient(c.id).catch(() => setNotice("Delete client failed"))}>Delete</Button>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Save"><IconButton size="small" onClick={() => saveClient(c.id).catch(() => setNotice("Save client failed"))} sx={{ borderRadius: 1.5 }} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => deleteClient(c.id).catch(() => setNotice("Delete client failed"))} sx={{ borderRadius: 1.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -1872,9 +1874,9 @@ export default function AdminView() {
                     </TableCell>
                     <TableCell><Switch checked={!!c.is_active} onChange={() => toggleCategory(c).catch(() => setNotice("Toggle failed"))} /></TableCell>
                     <TableCell>
-                      <Stack direction="row" spacing={1}>
-                        <Button size="small" onClick={() => saveCategory(c.id).catch(() => setNotice("Save failed"))}>Save</Button>
-                        <Button size="small" color="error" onClick={() => deleteCategory(c.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
+                      <Stack direction="row" spacing={0.5}>
+                        <Tooltip title="Save"><IconButton size="small" onClick={() => saveCategory(c.id).catch(() => setNotice("Save failed"))} sx={{ borderRadius: 1.5 }} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => deleteCategory(c.id).catch(() => setNotice("Delete failed"))} sx={{ borderRadius: 1.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -1958,16 +1960,16 @@ export default function AdminView() {
                       </TableCell>
                       <TableCell><Switch checked={!!pt.is_active} onChange={() => toggleProductType(pt).catch(() => setNotice("Toggle failed"))} /></TableCell>
                       <TableCell>
-                        <Stack direction="row" spacing={1}>
+                        <Stack direction="row" spacing={0.5}>
                           {editingProductTypeId === pt.id ? (
                             <>
-                              <Button size="small" onClick={() => saveProductType(pt.id).catch(() => setNotice("Save failed"))}>Save</Button>
-                              <Button size="small" onClick={() => setEditingProductTypeId(null)}>Cancel</Button>
+                              <Tooltip title="Save"><IconButton size="small" onClick={() => saveProductType(pt.id).catch(() => setNotice("Save failed"))} sx={{ borderRadius: 1.5 }} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                              <Tooltip title="Cancel"><IconButton size="small" onClick={() => setEditingProductTypeId(null)} sx={{ borderRadius: 1.5 }}><HighlightOffIcon fontSize="small" /></IconButton></Tooltip>
                             </>
                           ) : (
-                            <Button size="small" onClick={() => setEditingProductTypeId(pt.id)}>Edit</Button>
+                            <Tooltip title="Edit"><IconButton size="small" color="primary" onClick={() => setEditingProductTypeId(pt.id)} sx={{ borderRadius: 1.5 }}><EditOutlinedIcon fontSize="small" /></IconButton></Tooltip>
                           )}
-                          <Button size="small" color="error" onClick={() => deleteProductType(pt.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
+                          <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => deleteProductType(pt.id).catch(() => setNotice("Delete failed"))} sx={{ borderRadius: 1.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -2023,8 +2025,8 @@ export default function AdminView() {
                     }
                   />
                   <StatusTag label={b.is_active ? "Active" : "Inactive"} color={b.is_active ? "success" : "default"} onDelete={() => toggleBrand(b).catch(() => setNotice("Toggle failed"))} />
-                  <Button size="small" onClick={() => saveBrand(b.id).catch(() => setNotice("Save failed"))}>Save</Button>
-                  <Button size="small" color="error" onClick={() => deleteBrand(b.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
+                  <Tooltip title="Save"><IconButton size="small" onClick={() => saveBrand(b.id).catch(() => setNotice("Save failed"))} sx={{ borderRadius: 1.5 }} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                  <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => deleteBrand(b.id).catch(() => setNotice("Delete failed"))} sx={{ borderRadius: 1.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                 </Stack>
               ))}
             </Stack>
@@ -2145,9 +2147,9 @@ export default function AdminView() {
                       </TableCell>
                       <TableCell><Switch checked={!!i.is_active} onChange={() => toggleItem(i).catch(() => setNotice("Toggle failed"))} /></TableCell>
                       <TableCell>
-                        <Stack direction="row" spacing={1}>
-                          <Button size="small" onClick={() => saveItem(i.id).catch(() => setNotice("Save failed"))}>Save</Button>
-                          <Button size="small" color="error" onClick={() => deleteItem(i.id).catch(() => setNotice("Delete failed"))}>Delete</Button>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Save"><IconButton size="small" onClick={() => saveItem(i.id).catch(() => setNotice("Save failed"))} sx={{ borderRadius: 1.5 }} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="Delete"><IconButton size="small" color="error" onClick={() => deleteItem(i.id).catch(() => setNotice("Delete failed"))} sx={{ borderRadius: 1.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -2271,33 +2273,37 @@ export default function AdminView() {
                                 onChange={(e) => setEditUserForm((p) => ({ ...p, password: e.target.value }))}
                                 sx={{ width: 180 }}
                               />
-                              <Button
-                                size="small"
-                                variant="contained"
-                                onClick={async () => {
-                                  const payload = { name: editUserForm.name, email: editUserForm.email };
-                                  if (editUserForm.password) {
-                                    if (editUserForm.password.length < 6) { setAdminToast({ open: true, severity: "warning", text: "Password must be at least 6 characters" }); return; }
-                                    payload.password = editUserForm.password;
-                                  }
-                                  try {
-                                    await api.patch(`/admin/users/${u.id}`, payload);
-                                    setEditingUserId(null);
-                                    setAdminToast({ open: true, severity: "success", text: "User updated" });
-                                    await loadAll();
-                                  } catch {
-                                    setAdminToast({ open: true, severity: "error", text: "Update failed" });
-                                  }
-                                }}
-                              >
-                                Save
-                              </Button>
-                              <Button size="small" onClick={() => setEditingUserId(null)}>Cancel</Button>
+                              <Tooltip title="Save changes">
+                                <IconButton size="small" sx={{ borderRadius: 1.5 }} color="success"
+                                  onClick={async () => {
+                                    const payload = { name: editUserForm.name, email: editUserForm.email };
+                                    if (editUserForm.password) {
+                                      if (editUserForm.password.length < 6) { setAdminToast({ open: true, severity: "warning", text: "Password must be at least 6 characters" }); return; }
+                                      payload.password = editUserForm.password;
+                                    }
+                                    try {
+                                      await api.patch(`/admin/users/${u.id}`, payload);
+                                      setEditingUserId(null);
+                                      setAdminToast({ open: true, severity: "success", text: "User updated" });
+                                      await loadAll();
+                                    } catch {
+                                      setAdminToast({ open: true, severity: "error", text: "Update failed" });
+                                    }
+                                  }}
+                                ><CheckCircleOutlineIcon fontSize="small" /></IconButton>
+                              </Tooltip>
+                              <Tooltip title="Cancel">
+                                <IconButton size="small" onClick={() => setEditingUserId(null)} sx={{ borderRadius: 1.5 }}><HighlightOffIcon fontSize="small" /></IconButton>
+                              </Tooltip>
                             </Stack>
                           ) : (
                             <Stack direction="row" spacing={0.5}>
-                              <Button size="small" variant="outlined" onClick={() => { setEditingUserId(u.id); setEditUserForm({ name: u.name, email: u.email, password: "" }); }}>Edit</Button>
-                              <Button size="small" color="error" onClick={() => deleteUser(u.id).catch(() => setNotice("Delete user failed"))}>Delete</Button>
+                              <Tooltip title="Edit user">
+                                <IconButton size="small" color="primary" onClick={() => { setEditingUserId(u.id); setEditUserForm({ name: u.name, email: u.email, password: "" }); }} sx={{ borderRadius: 1.5 }}><EditOutlinedIcon fontSize="small" /></IconButton>
+                              </Tooltip>
+                              <Tooltip title="Delete user">
+                                <IconButton size="small" color="error" onClick={() => deleteUser(u.id).catch(() => setNotice("Delete user failed"))} sx={{ borderRadius: 1.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                              </Tooltip>
                             </Stack>
                           )}
                         </TableCell>
@@ -2543,8 +2549,8 @@ export default function AdminView() {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditProjectOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => saveAdminEditProject().catch(() => setNotice("Update project failed"))}>Save</Button>
+          <Button onClick={() => setEditProjectOpen(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
+          <Button variant="contained" color="success" startIcon={<CheckCircleOutlineIcon />} onClick={() => saveAdminEditProject().catch(() => setNotice("Update project failed"))}>Save</Button>
         </DialogActions>
       </Dialog>
 
@@ -2554,8 +2560,8 @@ export default function AdminView() {
           <Typography>Are you sure you want to delete this project? This action cannot be undone.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteProjectOpen(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={() => confirmAdminDeleteProject().catch(() => setNotice("Delete project failed"))}>Delete</Button>
+          <Button onClick={() => setDeleteProjectOpen(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
+          <Button variant="contained" color="error" startIcon={<DeleteOutlineIcon />} onClick={() => confirmAdminDeleteProject().catch(() => setNotice("Delete project failed"))}>Delete</Button>
         </DialogActions>
       </Dialog>
 

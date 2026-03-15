@@ -34,6 +34,8 @@ import {
   Tabs,
   TextField,
   Typography,
+  IconButton,
+  Tooltip,
   Zoom,
   useMediaQuery,
   useTheme,
@@ -41,6 +43,10 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddIcon from "@mui/icons-material/Add";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import HierarchySelector from "../components/HierarchySelector";
 import { api } from "../api/client";
 import KpiCard from "../components/KpiCard";
@@ -588,39 +594,41 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                   {p.last_activity ? new Date(p.last_activity).toLocaleString() : "-"}
                 </Typography>
                 <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }}>
-                  <Button
-                    size="small"
-                    color="primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditProjectId(p.id);
-                      setEditProjectForm({
-                        name: p.name || "",
-                        clientId: p.client_id || "",
-                        clientName: p.client_name || "",
-                        location: p.location || "",
-                        driveLink: p.drive_link || "",
-                        startDate: p.start_date ? p.start_date.slice(0, 10) : "",
-                        engineerIds: p.engineer_ids || [],
-                        clientUserIds: p.client_user_ids || [],
-                        categorySequenceMode: !!p.category_sequence_mode,
-                      });
-                      setEditProjectOpen(true);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteProjectId(p.id);
-                      setDeleteProjectOpen(true);
-                    }}
-                  >
-                    Delete
-                  </Button>
+                  <Tooltip title="Edit project">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      sx={{ borderRadius: 1.5 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditProjectId(p.id);
+                        setEditProjectForm({
+                          name: p.name || "",
+                          clientId: p.client_id || "",
+                          clientName: p.client_name || "",
+                          location: p.location || "",
+                          driveLink: p.drive_link || "",
+                          startDate: p.start_date ? p.start_date.slice(0, 10) : "",
+                          engineerIds: p.engineer_ids || [],
+                          clientUserIds: p.client_user_ids || [],
+                          categorySequenceMode: !!p.category_sequence_mode,
+                        });
+                        setEditProjectOpen(true);
+                      }}
+                    ><EditOutlinedIcon fontSize="small" /></IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete project">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      sx={{ borderRadius: 1.5 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteProjectId(p.id);
+                        setDeleteProjectOpen(true);
+                      }}
+                    ><DeleteOutlineIcon fontSize="small" /></IconButton>
+                  </Tooltip>
                 </Stack>
               </Paper>
             ))}
@@ -668,39 +676,35 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                           >
                             {openProjectRowId === p.id ? "Close" : "Open"}
                           </Button>
-                          <Button
-                            size="small"
-                            color="primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditProjectId(p.id);
-                              setEditProjectForm({
-                                name: p.name || "",
-                                clientId: p.client_id || "",
-                                clientName: p.client_name || "",
-                                location: p.location || "",
-                                driveLink: p.drive_link || "",
-                                startDate: p.start_date ? p.start_date.slice(0, 10) : "",
-                                engineerIds: p.engineer_ids || [],
-                                clientUserIds: p.client_user_ids || [],
-                                categorySequenceMode: !!p.category_sequence_mode,
-                              });
-                              setEditProjectOpen(true);
-                            }}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            size="small"
-                            color="error"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteProjectId(p.id);
-                              setDeleteProjectOpen(true);
-                            }}
-                          >
-                            Delete
-                          </Button>
+                          <Tooltip title="Edit project">
+                            <IconButton size="small" color="primary" sx={{ borderRadius: 1.5 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditProjectId(p.id);
+                                setEditProjectForm({
+                                  name: p.name || "",
+                                  clientId: p.client_id || "",
+                                  clientName: p.client_name || "",
+                                  location: p.location || "",
+                                  driveLink: p.drive_link || "",
+                                  startDate: p.start_date ? p.start_date.slice(0, 10) : "",
+                                  engineerIds: p.engineer_ids || [],
+                                  clientUserIds: p.client_user_ids || [],
+                                  categorySequenceMode: !!p.category_sequence_mode,
+                                });
+                                setEditProjectOpen(true);
+                              }}
+                            ><EditOutlinedIcon fontSize="small" /></IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete project">
+                            <IconButton size="small" color="error" sx={{ borderRadius: 1.5 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteProjectId(p.id);
+                                setDeleteProjectOpen(true);
+                              }}
+                            ><DeleteOutlineIcon fontSize="small" /></IconButton>
+                          </Tooltip>
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -767,17 +771,17 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Typography variant="caption" color="text.secondary">({clientPagination.total} total)</Typography>
         </Stack>
         <TableContainer sx={{ mt: 1, overflowX: "auto" }}>
-          <Table size="small">
+          <Table size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Location</TableCell>
-                <TableCell>Contact</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Projects</TableCell>
-                <TableCell>Active</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell sx={{ minWidth: 120 }}>Name</TableCell>
+                <TableCell sx={{ minWidth: 110 }}>Location</TableCell>
+                <TableCell sx={{ minWidth: 110 }}>Contact</TableCell>
+                <TableCell sx={{ width: 120, minWidth: 120 }}>Phone</TableCell>
+                <TableCell sx={{ minWidth: 140 }}>Email</TableCell>
+                <TableCell sx={{ minWidth: 100 }}>Projects</TableCell>
+                <TableCell sx={{ width: 60, whiteSpace: "nowrap" }}>Active</TableCell>
+                <TableCell sx={{ width: 80, whiteSpace: "nowrap" }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -792,8 +796,8 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                   <TableCell>
                     <TextField size="small" value={editClientMaster[c.id]?.primaryContactName ?? c.primary_contact_name ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactName: e.target.value } }))} />
                   </TableCell>
-                  <TableCell>
-                    <TextField size="small" value={editClientMaster[c.id]?.primaryContactPhone ?? c.primary_contact_phone ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactPhone: e.target.value } }))} />
+                  <TableCell sx={{ width: 130 }}>
+                    <TextField size="small" value={editClientMaster[c.id]?.primaryContactPhone ?? c.primary_contact_phone ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactPhone: e.target.value } }))} inputProps={{ style: { width: 110 } }} />
                   </TableCell>
                   <TableCell>
                     <TextField size="small" value={editClientMaster[c.id]?.primaryContactEmail ?? c.primary_contact_email ?? ""} onChange={(e) => setEditClientMaster((p) => ({ ...p, [c.id]: { ...(p[c.id] || {}), primaryContactEmail: e.target.value } }))} />
@@ -815,9 +819,13 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Button size="small" onClick={() => saveClientMaster(c.id).catch(() => setToast({ open: true, severity: "error", text: "Save client failed" }))}>Save</Button>
-                      <Button size="small" color="error" onClick={() => deleteClientMaster(c.id).catch(() => setToast({ open: true, severity: "error", text: "Delete client failed" }))}>Delete</Button>
+                    <Stack direction="row" spacing={0.5}>
+                      <Tooltip title="Save client">
+                        <IconButton size="small" sx={{ borderRadius: 1.5 }} color="success" onClick={() => saveClientMaster(c.id).catch(() => setToast({ open: true, severity: "error", text: "Save client failed" }))}><CheckCircleOutlineIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete client">
+                        <IconButton size="small" color="error" onClick={() => deleteClientMaster(c.id).catch(() => setToast({ open: true, severity: "error", text: "Delete client failed" }))} sx={{ borderRadius: 1.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                      </Tooltip>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -1005,12 +1013,12 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                   <TextField size="small" label="Name" value={c.contactName || c.contact_name || ""} onChange={(e) => setProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, contactName: e.target.value } : x))} />
                   <TextField size="small" label="Phone" value={c.phone || ""} onChange={(e) => setProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, phone: e.target.value } : x))} />
                   <TextField size="small" label="Email" value={c.email || ""} onChange={(e) => setProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, email: e.target.value } : x))} />
-                  <Button color="error" onClick={() => setProjectContacts((prev) => prev.filter((_, i) => i !== idx))}>Remove</Button>
+                  <Tooltip title="Remove contact"><IconButton size="small" color="error" onClick={() => setProjectContacts((prev) => prev.filter((_, i) => i !== idx))}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                 </Stack>
               ))}
               <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
                 <Button size="small" variant="outlined" onClick={() => setProjectContacts((prev) => [...prev, { roleName: "Civil Engineer", contactName: "", phone: "", email: "", notes: "" }])}>Add Contact</Button>
-                <Button size="small" variant="contained" onClick={saveContacts}>Save Contacts</Button>
+                <Tooltip title="Save contacts"><IconButton color="success" onClick={saveContacts} sx={{ borderRadius: 1.5 }} color="success"><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
               </Stack>
             </Stack>
             <Divider sx={{ my: 2 }} />
@@ -1447,8 +1455,8 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>Cancel</Button>
-          <Button variant="contained" onClick={addBomItem}>Save</Button>
+          <Button onClick={() => setOpenAdd(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
+          <Button variant="contained" color="success" startIcon={<CheckCircleOutlineIcon />} onClick={addBomItem}>Save</Button>
         </DialogActions>
       </Dialog>
 
@@ -1522,8 +1530,8 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreateProject(false)}>Cancel</Button>
-          <Button variant="contained" onClick={createProject}>Save</Button>
+          <Button onClick={() => setOpenCreateProject(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
+          <Button variant="contained" color="success" startIcon={<CheckCircleOutlineIcon />} onClick={createProject}>Save</Button>
         </DialogActions>
       </Dialog>
 
@@ -1588,8 +1596,8 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditProjectOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => saveEditProject().catch(() => setToast({ open: true, severity: "error", text: "Update project failed" }))}>Save</Button>
+          <Button onClick={() => setEditProjectOpen(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
+          <Button variant="contained" color="success" startIcon={<CheckCircleOutlineIcon />} onClick={() => saveEditProject().catch(() => setToast({ open: true, severity: "error", text: "Update project failed" }))}>Save</Button>
         </DialogActions>
       </Dialog>
 
@@ -1599,8 +1607,8 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Typography>Are you sure you want to delete this project? This action cannot be undone.</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteProjectOpen(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={() => confirmDeleteProject().catch(() => setToast({ open: true, severity: "error", text: "Delete project failed" }))}>Delete</Button>
+          <Button onClick={() => setDeleteProjectOpen(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
+          <Button variant="contained" color="error" startIcon={<DeleteOutlineIcon />} onClick={() => confirmDeleteProject().catch(() => setToast({ open: true, severity: "error", text: "Delete project failed" }))}>Delete</Button>
         </DialogActions>
       </Dialog>
 
