@@ -44,6 +44,7 @@ import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import HierarchySelector from "../components/HierarchySelector";
 import { api } from "../api/client";
 import KpiCard from "../components/KpiCard";
+import BomStatusChart from "../components/BomStatusChart";
 
 export default function ProjectManagerView({ masterData, role = "project_manager" }) {
   const theme = useTheme();
@@ -892,11 +893,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               disabled={!projectId}
               onClick={async () => {
                 if (!projectId) return;
-                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
-                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                const res = await api.get(`/projects/${projectId}/report.xlsx`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `inka_report_${projectId}.pdf`;
+                a.download = `inka_report_${projectId}.xlsx`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
@@ -913,6 +914,9 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Chip label={`Balance: INR ${Number(dashboard?.summary?.total_balance_value || 0).toLocaleString()}`} color="secondary" variant="outlined" />
           <Chip label={`Visits: ${Number(dashboard?.summary?.visit_count || 0)}`} color="info" variant="outlined" />
         </Stack>
+
+        <BomStatusChart bom={dashboard?.bom || []} />
+
         {dashboard?.project ? (
           <Paper sx={{ mt: 1.4, p: 1.4, bgcolor: "background.paper" }}>
             <Grid container spacing={1}>
@@ -1099,10 +1103,24 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                           <Typography variant="caption" color="text.secondary">{r.product_type_name}</Typography>
                           <Typography variant="caption" display="block" color="text.secondary">Location: {r.location_description || "-"}</Typography>
                           <Divider sx={{ my: 1 }} />
-                          <Stack direction="row" spacing={1}>
+                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                             <Chip label={`Approved ${r.quantity}`} size="small" color="primary" />
                             <Chip label={`Delivered ${r.delivered_quantity}`} size="small" color="success" />
                             <Chip label={`Balance ${Number(r.quantity) - Number(r.delivered_quantity)}`} size="small" color="warning" />
+                            <Chip
+                              label={r.status}
+                              size="small"
+                              color={
+                                r.status === "Installed - Working" ? "success"
+                                : r.status === "Installed - To Activate" ? "info"
+                                : r.status === "Installed - Not Working" ? "error"
+                                : r.status === "Wiring Done" || r.status === "Wiring Checked OK" ? "info"
+                                : r.status === "Wiring Rework Required" || r.status === "Provision Not Provided" || r.status === "Position To Be Changed" ? "error"
+                                : r.status === "Piping Done" || r.status === "Position Marked" ? "secondary"
+                                : "default"
+                              }
+                              variant="outlined"
+                            />
                           </Stack>
                         </Paper>
                       </Grid>
@@ -1283,16 +1301,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               disabled={!projectId}
               onClick={async () => {
                 if (!projectId) return;
-                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
-                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                const res = await api.get(`/projects/${projectId}/report.xlsx`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `inka_report_${projectId}.pdf`;
+                a.download = `inka_report_${projectId}.xlsx`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
             >
-              Download PDF Report
+              Download Report
             </Button>
           </Stack>
           {projects.length > 0 && (
@@ -1317,16 +1335,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                           size="small"
                           variant="outlined"
                           onClick={async () => {
-                            const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
-                            const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                            const res = await api.get(`/projects/${p.id}/report.xlsx`, { responseType: "blob" });
+                            const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                             const a = document.createElement("a");
                             a.href = url;
-                            a.download = `inka_report_${p.id}.pdf`;
+                            a.download = `inka_report_${p.id}.xlsx`;
                             a.click();
                             URL.revokeObjectURL(url);
                           }}
                         >
-                          PDF
+                          Excel
                         </Button>
                       </TableCell>
                     </TableRow>

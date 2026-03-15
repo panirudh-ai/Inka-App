@@ -330,7 +330,24 @@ export default function EngineerView() {
           {(dashboard?.bom || []).map((row) => (
             <Grid key={row.id} size={{ xs: 12, md: 6 }}>
               <Paper sx={{ p: 1.3 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.brand_name} {row.model_number}</Typography>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{row.brand_name} {row.model_number}</Typography>
+                  <Chip
+                    label={row.status}
+                    size="small"
+                    color={
+                      row.status === "Installed - Working" ? "success"
+                      : row.status === "Installed - To Activate" ? "info"
+                      : row.status === "Installed - Not Working" ? "error"
+                      : row.status === "Wiring Done" || row.status === "Wiring Checked OK" ? "info"
+                      : row.status === "Wiring Rework Required" || row.status === "Provision Not Provided" || row.status === "Position To Be Changed" ? "error"
+                      : row.status === "Piping Done" || row.status === "Position Marked" ? "secondary"
+                      : "default"
+                    }
+                    variant="outlined"
+                    sx={{ ml: 1, flexShrink: 0 }}
+                  />
+                </Stack>
                 <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mt: 1 }}>
                   <TextField
                     size="small"

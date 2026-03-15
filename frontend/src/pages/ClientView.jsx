@@ -71,11 +71,11 @@ export default function ClientView() {
               sx={{ width: { xs: "100%", sm: "auto" } }}
               onClick={async () => {
                 if (!projectId) return;
-                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
-                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                const res = await api.get(`/projects/${projectId}/report.xlsx`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `inka_report_${projectId}.pdf`;
+                a.download = `inka_report_${projectId}.xlsx`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
@@ -140,10 +140,24 @@ export default function ClientView() {
                     <Paper key={r.id} sx={{ p: 1, bgcolor: "action.hover" }}>
                       <Typography variant="body2">{r.brand_name} {r.model_number}</Typography>
                       <Typography variant="caption" color="text.secondary">Location: {r.location_description || "-"}</Typography>
-                      <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+                      <Stack direction="row" spacing={1} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
                         <Chip size="small" label={`Approved ${r.quantity}`} />
                         <Chip size="small" color="success" label={`Delivered ${r.delivered_quantity}`} />
                         <Chip size="small" color="warning" label={`Balance ${Number(r.quantity) - Number(r.delivered_quantity)}`} />
+                        <Chip
+                          size="small"
+                          label={r.status}
+                          color={
+                            r.status === "Installed - Working" ? "success"
+                            : r.status === "Installed - To Activate" ? "info"
+                            : r.status === "Installed - Not Working" ? "error"
+                            : r.status === "Wiring Done" || r.status === "Wiring Checked OK" ? "info"
+                            : r.status === "Wiring Rework Required" || r.status === "Provision Not Provided" || r.status === "Position To Be Changed" ? "error"
+                            : r.status === "Piping Done" || r.status === "Position Marked" ? "secondary"
+                            : "default"
+                          }
+                          variant="outlined"
+                        />
                       </Stack>
                     </Paper>
                   ))}

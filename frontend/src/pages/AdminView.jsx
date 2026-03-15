@@ -46,6 +46,7 @@ import AddIcon from "@mui/icons-material/Add";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import HierarchySelector from "../components/HierarchySelector";
 import KpiCard from "../components/KpiCard";
+import BomStatusChart from "../components/BomStatusChart";
 import { api } from "../api/client";
 
 export default function AdminView() {
@@ -1153,16 +1154,16 @@ export default function AdminView() {
                                       size="small"
                                       variant="outlined"
                                       onClick={async () => {
-                                        const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
-                                        const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                                        const res = await api.get(`/projects/${p.id}/report.xlsx`, { responseType: "blob" });
+                                        const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                                         const a = document.createElement("a");
                                         a.href = url;
-                                        a.download = `inka_report_${p.id}.pdf`;
+                                        a.download = `inka_report_${p.id}.xlsx`;
                                         a.click();
                                         URL.revokeObjectURL(url);
                                       }}
                                     >
-                                      Download PDF Report
+                                      Download Report
                                     </Button>
                                   </Stack>
                                   {selectedProjectDriveFiles.length ? (
@@ -1239,11 +1240,11 @@ export default function AdminView() {
                     sx={{ width: { xs: "100%", sm: "auto" } }}
                     disabled={!selectedProjectId}
                     onClick={async () => {
-                      const res = await api.get(`/projects/${selectedProjectId}/report.pdf`, { responseType: "blob" });
-                      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                      const res = await api.get(`/projects/${selectedProjectId}/report.xlsx`, { responseType: "blob" });
+                      const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `inka_report_${selectedProjectId}.pdf`;
+                      a.download = `inka_report_${selectedProjectId}.xlsx`;
                       a.click();
                       URL.revokeObjectURL(url);
                     }}
@@ -1261,6 +1262,8 @@ export default function AdminView() {
                 <Chip label={`Balance: INR ${Number(selectedProjectDashboard.summary?.total_balance_value || 0).toLocaleString()}`} color="secondary" variant="outlined" />
                 <Chip label={`Visits: ${Number(selectedProjectDashboard.summary?.visit_count || 0)}`} color="info" variant="outlined" />
               </Stack>
+
+              <BomStatusChart bom={selectedProjectDashboard.bom || []} />
 
               {projectDetailsLoading ? (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Loading project details...</Typography>
@@ -1458,10 +1461,24 @@ export default function AdminView() {
                                 <Typography variant="caption" color="text.secondary">{r.product_type_name}</Typography>
                                 <Typography variant="caption" display="block" color="text.secondary">Location: {r.location_description || "-"}</Typography>
                                 <Divider sx={{ my: 1 }} />
-                                <Stack direction="row" spacing={1}>
+                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                                   <Chip label={`Approved ${r.quantity}`} size="small" color="primary" />
                                   <Chip label={`Delivered ${r.delivered_quantity}`} size="small" color="success" />
                                   <Chip label={`Balance ${Number(r.quantity) - Number(r.delivered_quantity)}`} size="small" color="warning" />
+                                  <Chip
+                                    label={r.status}
+                                    size="small"
+                                    color={
+                                      r.status === "Installed - Working" ? "success"
+                                      : r.status === "Installed - To Activate" ? "info"
+                                      : r.status === "Installed - Not Working" ? "error"
+                                      : r.status === "Wiring Done" || r.status === "Wiring Checked OK" ? "info"
+                                      : r.status === "Wiring Rework Required" || r.status === "Provision Not Provided" || r.status === "Position To Be Changed" ? "error"
+                                      : r.status === "Piping Done" || r.status === "Position Marked" ? "secondary"
+                                      : "default"
+                                    }
+                                    variant="outlined"
+                                  />
                                 </Stack>
                               </Paper>
                             </Grid>
@@ -2261,16 +2278,16 @@ export default function AdminView() {
                 disabled={!selectedProjectId}
                 onClick={async () => {
                   if (!selectedProjectId) return;
-                  const res = await api.get(`/projects/${selectedProjectId}/report.pdf`, { responseType: "blob" });
-                  const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                  const res = await api.get(`/projects/${selectedProjectId}/report.xlsx`, { responseType: "blob" });
+                  const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `inka_report_${selectedProjectId}.pdf`;
+                  a.download = `inka_report_${selectedProjectId}.xlsx`;
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
               >
-                Download PDF Report
+                Download Report
               </Button>
             </Stack>
             {filteredReports.length > 0 && (
@@ -2297,16 +2314,16 @@ export default function AdminView() {
                             size="small"
                             variant="outlined"
                             onClick={async () => {
-                              const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
-                              const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                              const res = await api.get(`/projects/${p.id}/report.xlsx`, { responseType: "blob" });
+                              const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
                               const a = document.createElement("a");
                               a.href = url;
-                              a.download = `inka_report_${p.id}.pdf`;
+                              a.download = `inka_report_${p.id}.xlsx`;
                               a.click();
                               URL.revokeObjectURL(url);
                             }}
                           >
-                            PDF
+                            Excel
                           </Button>
                         </TableCell>
                       </TableRow>
