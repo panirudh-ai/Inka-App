@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(find /e/Inka-App -name *.xlsx -o -name *.xls)"
     ]
   }
 }

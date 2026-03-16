@@ -63,6 +63,7 @@ export default function AdminView() {
   const MAX_RENDER_ROWS = 200;
   const [tab, setTab] = useState(0);
   const [catSearch, setCatSearch] = useState("");
+  const [catPage, setCatPage] = useState(1);
   const [ptSearch, setPtSearch] = useState("");
   const [brandSearch, setBrandSearch] = useState("");
   const [modelSearch, setModelSearch] = useState("");
@@ -377,6 +378,12 @@ export default function AdminView() {
     const q = catSearch.toLowerCase();
     return categories.filter((c) => c.name.toLowerCase().includes(q));
   }, [categories, catSearch]);
+  const catPageSize = 10;
+  const catTotalPages = Math.max(1, Math.ceil(categories.length / catPageSize));
+  const pagedCategories = useMemo(() => {
+    const start = (catPage - 1) * catPageSize;
+    return categories.slice(start, start + catPageSize);
+  }, [categories, catPage]);
 
   const filteredProductTypes = useMemo(() => {
     if (!ptSearch) return null; // null = use pagination
@@ -1156,16 +1163,16 @@ export default function AdminView() {
                                       size="small"
                                       variant="outlined"
                                       onClick={async () => {
-                                        const res = await api.get(`/projects/${p.id}/report.xlsx`, { responseType: "blob" });
-                                        const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                                        const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
+                                        const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                                         const a = document.createElement("a");
                                         a.href = url;
-                                        a.download = `inka_report_${p.id}.xlsx`;
+                                        a.download = `inka_report_${p.id}.pdf`;
                                         a.click();
                                         URL.revokeObjectURL(url);
                                       }}
                                     >
-                                      Download Report
+                                      Download PDF Report
                                     </Button>
                                   </Stack>
                                   {selectedProjectDriveFiles.length ? (
@@ -1247,16 +1254,16 @@ export default function AdminView() {
                     sx={{ width: { xs: "100%", sm: "auto" }, borderRadius: 2 }}
                     disabled={!selectedProjectId}
                     onClick={async () => {
-                      const res = await api.get(`/projects/${selectedProjectId}/report.xlsx`, { responseType: "blob" });
-                      const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                      const res = await api.get(`/projects/${selectedProjectId}/report.pdf`, { responseType: "blob" });
+                      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `inka_report_${selectedProjectId}.xlsx`;
+                      a.download = `inka_report_${selectedProjectId}.pdf`;
                       a.click();
                       URL.revokeObjectURL(url);
                     }}
                   >
-                    Download Report
+                    Download PDF Report
                   </Button>
                 </Stack>
               </Stack>
@@ -1823,17 +1830,16 @@ export default function AdminView() {
               ))}
             </Stack>
             <Divider sx={{ my: 1.4 }} />
-            <TextField
-              size="small"
-              label="Search categories"
-              value={catSearch}
-              onChange={(e) => setCatSearch(e.target.value)}
-              sx={{ mb: 1.2, maxWidth: 320 }}
-            />
-            <Table size="small">
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+              <TextField size="small" label="Search categories" value={catSearch} onChange={(e) => { setCatSearch(e.target.value); setCatPage(1); }} sx={{ minWidth: 220 }} />
+              <Button size="small" disabled={catSearch !== "" || catPage <= 1} onClick={() => setCatPage((p) => Math.max(1, p - 1))}>Prev</Button>
+              <Typography variant="caption" color="text.secondary">Page {catPage} / {catTotalPages}</Typography>
+              <Button size="small" disabled={catSearch !== "" || catPage >= catTotalPages} onClick={() => setCatPage((p) => Math.min(catTotalPages, p + 1))}>Next</Button>
+            </Stack>
+            <Table size="small" sx={{ mt: 1 }}>
               <TableHead><TableRow><TableCell>Name</TableCell><TableCell>Sequence</TableCell><TableCell>Active</TableCell><TableCell>Actions</TableCell></TableRow></TableHead>
               <TableBody>
-                {filteredCategories.slice(0, MAX_RENDER_ROWS).map((c) => (
+                {(catSearch ? filteredCategories : pagedCategories).map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>
                       <TextField
@@ -1872,7 +1878,7 @@ export default function AdminView() {
               </TableBody>
             </Table>
             <Typography variant="caption" color="text.secondary">
-              Showing {Math.min(filteredCategories.length, MAX_RENDER_ROWS)} of {filteredCategories.length} categories{catSearch ? ` matching "${catSearch}"` : ""}.
+              Showing {catSearch ? filteredCategories.length : Math.min(catPageSize, categories.length - (catPage - 1) * catPageSize)} of {categories.length} categories{catSearch ? ` matching "${catSearch}"` : ""}.
             </Typography>
           </Paper>
         )}
@@ -2332,16 +2338,16 @@ export default function AdminView() {
                 disabled={!selectedProjectId}
                 onClick={async () => {
                   if (!selectedProjectId) return;
-                  const res = await api.get(`/projects/${selectedProjectId}/report.xlsx`, { responseType: "blob" });
-                  const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                  const res = await api.get(`/projects/${selectedProjectId}/report.pdf`, { responseType: "blob" });
+                  const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `inka_report_${selectedProjectId}.xlsx`;
+                  a.download = `inka_report_${selectedProjectId}.pdf`;
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
               >
-                Download Report
+                Download PDF Report
               </Button>
             </Stack>
             {filteredReports.length > 0 && (
@@ -2368,16 +2374,16 @@ export default function AdminView() {
                             size="small"
                             variant="outlined"
                             onClick={async () => {
-                              const res = await api.get(`/projects/${p.id}/report.xlsx`, { responseType: "blob" });
-                              const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                              const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
+                              const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                               const a = document.createElement("a");
                               a.href = url;
-                              a.download = `inka_report_${p.id}.xlsx`;
+                              a.download = `inka_report_${p.id}.pdf`;
                               a.click();
                               URL.revokeObjectURL(url);
                             }}
                           >
-                            Excel
+                            PDF
                           </Button>
                         </TableCell>
                       </TableRow>

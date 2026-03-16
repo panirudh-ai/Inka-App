@@ -907,16 +907,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               disabled={!projectId}
               onClick={async () => {
                 if (!projectId) return;
-                const res = await api.get(`/projects/${projectId}/report.xlsx`, { responseType: "blob" });
-                const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `inka_report_${projectId}.xlsx`;
+                a.download = `inka_report_${projectId}.pdf`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
             >
-              Download Report
+              Download PDF Report
             </Button>
           </Stack>
         </Stack>
@@ -1359,16 +1359,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               disabled={!projectId}
               onClick={async () => {
                 if (!projectId) return;
-                const res = await api.get(`/projects/${projectId}/report.xlsx`, { responseType: "blob" });
-                const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `inka_report_${projectId}.xlsx`;
+                a.download = `inka_report_${projectId}.pdf`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
             >
-              Download Report
+              Download PDF Report
             </Button>
           </Stack>
           {projects.length > 0 && (
@@ -1393,16 +1393,16 @@ export default function ProjectManagerView({ masterData, role = "project_manager
                           size="small"
                           variant="outlined"
                           onClick={async () => {
-                            const res = await api.get(`/projects/${p.id}/report.xlsx`, { responseType: "blob" });
-                            const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                            const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
+                            const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                             const a = document.createElement("a");
                             a.href = url;
-                            a.download = `inka_report_${p.id}.xlsx`;
+                            a.download = `inka_report_${p.id}.pdf`;
                             a.click();
                             URL.revokeObjectURL(url);
                           }}
                         >
-                          Excel
+                          PDF
                         </Button>
                       </TableCell>
                     </TableRow>

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import PDFDocument from "pdfkit";
-import * as XLSX from "xlsx";
 import { pool } from "../db/pool.js";
 import { asyncHandler } from "../services/asyncHandler.js";
 import { requireRoles } from "../middleware/auth.js";
@@ -34,12 +33,131 @@ async function assertReportProjectAccess(ctx, projectId) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Helper — truncate text to fit a cell width (approximate char-based)
+// ---------------------------------------------------------------------------
+function truncateText(doc, text, maxWidth) {
+  if (!text) return "";
+  const str = String(text);
+  if (doc.widthOfString(str) <= maxWidth) return str;
+  let truncated = str;
+  while (truncated.length > 0 && doc.widthOfString(truncated + "…") > maxWidth) {
+    truncated = truncated.slice(0, -1);
+  }
+  return truncated + "…";
+}
+
+// ---------------------------------------------------------------------------
+// Helper — draw a bordered table, returns the Y position after the table
+// ---------------------------------------------------------------------------
+function drawTable(doc, { x, y, headers, rows, colWidths, rowHeight = 20, headerColor = "#dc5648" }) {
+  const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+  const pageBottom = doc.page.height - doc.page.margins.bottom;
+  const cellPaddingX = 5;
+  const cellPaddingY = 5;
+
+  // ── Draw header row ──────────────────────────────────────────────────────
+  doc.rect(x, y, totalWidth, rowHeight).fill(headerColor);
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(7);
+
+  let cx = x;
+  for (let i = 0; i < headers.length; i++) {
+    const label = truncateText(doc, headers[i], colWidths[i] - cellPaddingX * 2);
+    doc.text(label, cx + cellPaddingX, y + cellPaddingY, {
+      width: colWidths[i] - cellPaddingX * 2,
+      lineBreak: false,
+    });
+    cx += colWidths[i];
+  }
+
+  // Header border
+  doc.strokeColor("#e0e0e0").lineWidth(0.5);
+  cx = x;
+  for (let i = 0; i < headers.length; i++) {
+    doc.rect(cx, y, colWidths[i], rowHeight).stroke();
+    cx += colWidths[i];
+  }
+
+  let currentY = y + rowHeight;
+
+  // ── Draw data rows ───────────────────────────────────────────────────────
+  for (let r = 0; r < rows.length; r++) {
+    // Page break check
+    if (currentY + rowHeight > pageBottom) {
+      doc.addPage();
+      currentY = doc.page.margins.top;
+
+      // Redraw header on new page
+      doc.rect(x, currentY, totalWidth, rowHeight).fill(headerColor);
+      doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(7);
+      cx = x;
+      for (let i = 0; i < headers.length; i++) {
+        const label = truncateText(doc, headers[i], colWidths[i] - cellPaddingX * 2);
+        doc.text(label, cx + cellPaddingX, currentY + cellPaddingY, {
+          width: colWidths[i] - cellPaddingX * 2,
+          lineBreak: false,
+        });
+        cx += colWidths[i];
+      }
+      doc.strokeColor("#e0e0e0").lineWidth(0.5);
+      cx = x;
+      for (let i = 0; i < headers.length; i++) {
+        doc.rect(cx, currentY, colWidths[i], rowHeight).stroke();
+        cx += colWidths[i];
+      }
+      currentY += rowHeight;
+    }
+
+    const rowBg = r % 2 === 0 ? "#f5f5f5" : "#ffffff";
+    doc.rect(x, currentY, totalWidth, rowHeight).fill(rowBg);
+
+    doc.fillColor("#333333").font("Helvetica").fontSize(7);
+    cx = x;
+    const rowData = rows[r];
+    for (let i = 0; i < colWidths.length; i++) {
+      const cellText = truncateText(doc, rowData[i] ?? "", colWidths[i] - cellPaddingX * 2);
+      doc.text(cellText, cx + cellPaddingX, currentY + cellPaddingY, {
+        width: colWidths[i] - cellPaddingX * 2,
+        lineBreak: false,
+      });
+      cx += colWidths[i];
+    }
+
+    // Row borders
+    doc.strokeColor("#e0e0e0").lineWidth(0.5);
+    cx = x;
+    for (let i = 0; i < colWidths.length; i++) {
+      doc.rect(cx, currentY, colWidths[i], rowHeight).stroke();
+      cx += colWidths[i];
+    }
+
+    currentY += rowHeight;
+  }
+
+  return currentY;
+}
+
+// ---------------------------------------------------------------------------
+// Helper — draw a section heading with a left accent bar
+// ---------------------------------------------------------------------------
+function drawSectionHeading(doc, text, x, y) {
+  doc.rect(x, y, 3, 14).fill("#dc5648");
+  doc.fillColor("#333333").font("Helvetica-Bold").fontSize(9);
+  doc.text(text, x + 9, y + 2, { characterSpacing: 0.5 });
+  return y + 22;
+}
+
+// ---------------------------------------------------------------------------
+// GET /projects/:projectId/report.pdf
+// ---------------------------------------------------------------------------
 router.get(
   "/projects/:projectId/report.pdf",
   requireRoles("admin", "project_manager", "engineer", "client"),
   asyncHandler(async (req, res) => {
     const { projectId } = req.params;
     await assertReportProjectAccess(req.ctx, projectId);
+
+    // ── Queries ─────────────────────────────────────────────────────────────
     const project = await pool.query(
       `SELECT id, name, client_name, location, drive_link, status
        FROM projects
@@ -60,6 +178,7 @@ router.get(
        ORDER BY c.sequence_order, pt.name, b.name, i.model_number`,
       [projectId]
     );
+
     const deliveries = await pool.query(
       `SELECT d.created_at, i.full_name, d.quantity, d.notes, u.name AS engineer_name
        FROM deliveries d
@@ -71,120 +190,197 @@ router.get(
       [projectId]
     );
 
+    // ── Setup document ───────────────────────────────────────────────────────
     const p = project.rows[0];
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="inka_report_${projectId}.pdf"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="inka_report_${projectId}.pdf"`
+    );
 
-    const doc = new PDFDocument({ margin: 42, size: "A4" });
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
     doc.pipe(res);
 
-    doc.fontSize(18).text("INKA Project Report", { underline: true });
-    doc.moveDown(0.4);
-    doc.fontSize(11).text(`Project: ${p.name}`);
-    doc.text(`Client: ${p.client_name}`);
-    doc.text(`Location: ${p.location}`);
-    if (p.drive_link) {
-      doc.text(`Drive Link: ${p.drive_link}`);
-    }
-    doc.text(`Status: ${p.status}`);
-    doc.moveDown(0.7);
+    const margin = 40;
+    const pageWidth = doc.page.width; // 595.28 for A4
+    const contentWidth = pageWidth - margin * 2; // ~515
+    const generatedDate = new Date().toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
 
-    doc.fontSize(13).text("Approved BOM");
-    doc.fontSize(9);
-    for (const row of bom.rows.slice(0, 80)) {
-      const line = `${row.category_name} | ${row.product_type_name} | ${row.brand_name} ${row.model_number} | A:${row.quantity} D:${row.delivered_quantity} | ${row.status}`;
-      doc.text(line);
-    }
-    doc.moveDown(0.7);
+    // ── Section 1: Header bar ────────────────────────────────────────────────
+    doc.rect(0, 0, pageWidth, 60).fill("#dc5648");
 
-    doc.fontSize(13).text("Recent Deliveries");
-    doc.fontSize(9);
-    for (const d of deliveries.rows) {
-      doc.text(
-        `${new Date(d.created_at).toLocaleString()} | ${d.full_name} | Qty ${d.quantity} | ${d.engineer_name || "Engineer"} | ${d.notes || "-"}`
-      );
+    // INKA brand text
+    doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(22);
+    doc.text("INKA", margin, 12, { lineBreak: false });
+
+    // Subtitle
+    doc.font("Helvetica").fontSize(10);
+    doc.text("Project Report", margin, 37, { lineBreak: false });
+
+    // Date on the right
+    doc.font("Helvetica").fontSize(8);
+    doc.text(`Generated: ${generatedDate}`, 0, 24, {
+      align: "right",
+      width: pageWidth - margin,
+      lineBreak: false,
+    });
+
+    let currentY = 80;
+
+    // ── Section 2: Project Details table ────────────────────────────────────
+    currentY = drawSectionHeading(doc, "PROJECT DETAILS", margin, currentY);
+
+    const infoColWidths = [130, contentWidth - 130];
+    const infoHeaders = ["Field", "Value"];
+    const infoRows = [
+      ["Project Name", p.name || "—"],
+      ["Client", p.client_name || "—"],
+      ["Location", p.location || "—"],
+      ["Status", p.status || "—"],
+      ["Drive Link", p.drive_link || "—"],
+      ["Report Generated", generatedDate],
+    ];
+
+    currentY = drawTable(doc, {
+      x: margin,
+      y: currentY,
+      headers: infoHeaders,
+      rows: infoRows,
+      colWidths: infoColWidths,
+      rowHeight: 18,
+    });
+
+    currentY += 18;
+
+    // ── Section 3: BOM Summary bar ───────────────────────────────────────────
+    const bomRows = bom.rows;
+    const totalItems = bomRows.length;
+    const deliveredItems = bomRows.filter((r) => Number(r.delivered_quantity) > 0).length;
+    const balanceItems = bomRows.filter(
+      (r) => Number(r.quantity) > Number(r.delivered_quantity)
+    ).length;
+    const installedItems = bomRows.filter(
+      (r) => r.status && r.status.toLowerCase() === "installed"
+    ).length;
+
+    const stats = [
+      { label: "Total Items", value: totalItems },
+      { label: "Delivered", value: deliveredItems },
+      { label: "Balance", value: balanceItems },
+      { label: "Installed", value: installedItems },
+    ];
+
+    const boxW = Math.floor(contentWidth / stats.length) - 6;
+    const boxH = 38;
+    let bx = margin;
+
+    for (const stat of stats) {
+      doc.rect(bx, currentY, boxW, boxH).fill("#f0f0f0");
+      doc.rect(bx, currentY, boxW, 3).fill("#dc5648");
+      doc.fillColor("#dc5648").font("Helvetica-Bold").fontSize(16);
+      doc.text(String(stat.value), bx, currentY + 7, {
+        width: boxW,
+        align: "center",
+        lineBreak: false,
+      });
+      doc.fillColor("#666666").font("Helvetica").fontSize(7);
+      doc.text(stat.label, bx, currentY + 26, {
+        width: boxW,
+        align: "center",
+        lineBreak: false,
+      });
+      bx += boxW + 8;
     }
+
+    currentY += boxH + 18;
+
+    // ── Section 4: Approved BOM table ────────────────────────────────────────
+    if (currentY > 700) {
+      doc.addPage();
+      currentY = doc.page.margins.top;
+    }
+
+    currentY = drawSectionHeading(doc, "APPROVED BILL OF MATERIALS", margin, currentY);
+
+    const bomColWidths = [80, 90, 70, 100, 55, 55, 75];
+    const bomHeaders = [
+      "Category",
+      "Product Type",
+      "Brand",
+      "Model",
+      "Approved Qty",
+      "Delivered Qty",
+      "Status",
+    ];
+    const bomDataRows = bomRows.map((r) => [
+      r.category_name,
+      r.product_type_name,
+      r.brand_name,
+      r.model_number,
+      r.quantity,
+      r.delivered_quantity,
+      r.status,
+    ]);
+
+    currentY = drawTable(doc, {
+      x: margin,
+      y: currentY,
+      headers: bomHeaders,
+      rows: bomDataRows,
+      colWidths: bomColWidths,
+      rowHeight: 20,
+    });
+
+    currentY += 18;
+
+    // ── Section 5: Delivery Log table ────────────────────────────────────────
+    if (currentY > 700) {
+      doc.addPage();
+      currentY = doc.page.margins.top;
+    }
+
+    currentY = drawSectionHeading(doc, "DELIVERY LOG", margin, currentY);
+
+    const delColWidths = [90, 160, 35, 90, 150];
+    const delHeaders = ["Date", "Item", "Qty", "Logged By", "Notes"];
+    const delDataRows = deliveries.rows.map((d) => [
+      d.created_at ? new Date(d.created_at).toLocaleDateString("en-GB") : "—",
+      d.full_name || "—",
+      d.quantity ?? "—",
+      d.engineer_name || "—",
+      d.notes || "—",
+    ]);
+
+    currentY = drawTable(doc, {
+      x: margin,
+      y: currentY,
+      headers: delHeaders,
+      rows: delDataRows,
+      colWidths: delColWidths,
+      rowHeight: 20,
+    });
+
+    // ── Footer ────────────────────────────────────────────────────────────────
+    const footerY = doc.page.height - 30;
+    doc.rect(0, footerY - 4, pageWidth, 1).fill("#e0e0e0");
+    doc.fillColor("#999999").font("Helvetica").fontSize(7);
+    doc.text(
+      `INKA — Confidential  |  Generated ${generatedDate}`,
+      margin,
+      footerY,
+      { align: "left", lineBreak: false }
+    );
+    doc.text(`Page 1`, 0, footerY, {
+      align: "right",
+      width: pageWidth - margin,
+      lineBreak: false,
+    });
 
     doc.end();
-  })
-);
-
-router.get(
-  "/projects/:projectId/report.xlsx",
-  requireRoles("admin", "project_manager", "engineer", "client"),
-  asyncHandler(async (req, res) => {
-    const { projectId } = req.params;
-    await assertReportProjectAccess(req.ctx, projectId);
-
-    const project = await pool.query(
-      `SELECT id, name, client_name, location, drive_link, status
-       FROM projects WHERE id = $1 AND tenant_id = $2`,
-      [projectId, req.ctx.tenantId]
-    );
-    if (!project.rowCount) return res.status(404).json({ error: "Project not found" });
-
-    const bom = await pool.query(
-      `SELECT c.name AS category, pt.name AS product_type, b.name AS brand,
-              i.model_number, pbi.quantity AS approved_qty, pbi.delivered_quantity AS delivered_qty, pbi.status
-       FROM project_bom_items pbi
-       JOIN items i ON i.id = pbi.item_id
-       JOIN categories c ON c.id = i.category_id
-       JOIN product_types pt ON pt.id = i.product_type_id
-       JOIN brands b ON b.id = i.brand_id
-       WHERE pbi.project_id = $1
-       ORDER BY c.sequence_order, pt.name, b.name, i.model_number`,
-      [projectId]
-    );
-
-    const deliveries = await pool.query(
-      `SELECT TO_CHAR(d.created_at AT TIME ZONE 'Asia/Kolkata', 'DD-Mon-YYYY HH12:MI AM') AS date,
-              i.full_name AS item, d.quantity, u.name AS logged_by, d.notes
-       FROM deliveries d
-       JOIN items i ON i.id = d.item_id
-       LEFT JOIN users u ON u.id = d.logged_by
-       WHERE d.project_id = $1
-       ORDER BY d.created_at DESC
-       LIMIT 200`,
-      [projectId]
-    );
-
-    const p = project.rows[0];
-    const wb = XLSX.utils.book_new();
-
-    // ── Sheet 1: Project Info ──────────────────────────────────────────
-    const infoData = [
-      ["Field", "Value"],
-      ["Project Name", p.name],
-      ["Client", p.client_name],
-      ["Location", p.location],
-      ["Status", p.status],
-      ["Drive Link", p.drive_link || ""],
-    ];
-    const wsInfo = XLSX.utils.aoa_to_sheet(infoData);
-    wsInfo["!cols"] = [{ wch: 18 }, { wch: 40 }];
-    XLSX.utils.book_append_sheet(wb, wsInfo, "Project Info");
-
-    // ── Sheet 2: Approved BOM ──────────────────────────────────────────
-    const bomHeader = ["Category", "Product Type", "Brand", "Model Number", "Approved Qty", "Delivered Qty", "Status"];
-    const bomRows = bom.rows.map((r) => [
-      r.category, r.product_type, r.brand, r.model_number,
-      r.approved_qty, r.delivered_qty, r.status,
-    ]);
-    const wsBom = XLSX.utils.aoa_to_sheet([bomHeader, ...bomRows]);
-    wsBom["!cols"] = [{ wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
-    XLSX.utils.book_append_sheet(wb, wsBom, "Approved BOM");
-
-    // ── Sheet 3: Deliveries ────────────────────────────────────────────
-    const delHeader = ["Date", "Item", "Quantity", "Logged By", "Notes"];
-    const delRows = deliveries.rows.map((d) => [d.date, d.item, d.quantity, d.logged_by || "", d.notes || ""]);
-    const wsDel = XLSX.utils.aoa_to_sheet([delHeader, ...delRows]);
-    wsDel["!cols"] = [{ wch: 22 }, { wch: 36 }, { wch: 10 }, { wch: 20 }, { wch: 36 }];
-    XLSX.utils.book_append_sheet(wb, wsDel, "Deliveries");
-
-    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="inka_report_${projectId}.xlsx"`);
-    res.send(buffer);
   })
 );
 

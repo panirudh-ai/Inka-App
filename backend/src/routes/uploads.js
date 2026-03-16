@@ -238,11 +238,18 @@ async function ensureBrand(ctx, name) {
 async function ensureProductType(ctx, categoryId, name) {
   const n = sanitizeEntityName(name, 'Unknown Product');
   const { rows } = await pool.query(
-    `SELECT id, category_id, name, is_active FROM product_types WHERE tenant_id = $1 AND category_id = $2 AND LOWER(name) = LOWER($3) LIMIT 1`,
-    [ctx.tenantId, categoryId, n]
+    `SELECT id, category_id FROM product_types WHERE tenant_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1`,
+    [ctx.tenantId, n]
   );
-  if (rows.length) return rows[0];
-  
+  if (rows.length) {
+    if (rows[0].category_id !== categoryId) {
+      await pool.query(
+        `UPDATE product_types SET category_id = $1 WHERE id = $2`,
+        [categoryId, rows[0].id]
+      );
+    }
+    return rows[0];
+  }
   const result = await pool.query(
     `INSERT INTO product_types (tenant_id, category_id, name, is_active) VALUES ($1, $2, $3, $4) RETURNING id, category_id, name, is_active`,
     [ctx.tenantId, categoryId, n, true]
@@ -253,18 +260,24 @@ async function ensureProductType(ctx, categoryId, name) {
 async function ensureItem(ctx, categoryId, productTypeId, brandId, modelNumber, fullName, rate) {
   const model = sanitizeEntityName(modelNumber, 'UNKNOWN-MODEL');
   const fn = sanitizeEntityName(fullName, model);
-  
+
   const { rows } = await pool.query(
-    `SELECT id FROM items WHERE tenant_id = $1 AND product_type_id = $2 AND brand_id = $3 AND LOWER(model_number) = LOWER($4) LIMIT 1`,
-    [ctx.tenantId, productTypeId, brandId, model]
+    `SELECT id FROM items WHERE tenant_id = $1 AND brand_id = $2 AND LOWER(model_number) = LOWER($3) LIMIT 1`,
+    [ctx.tenantId, brandId, model]
   );
-  if (rows.length) return rows[0];
-  
+  if (rows.length) {
+    await pool.query(
+      `UPDATE items SET category_id = $1, product_type_id = $2, full_name = $3 WHERE id = $4`,
+      [categoryId, productTypeId, fn, rows[0].id]
+    );
+    return { id: rows[0].id, created: false };
+  }
+
   const result = await pool.query(
     `INSERT INTO items (tenant_id, category_id, product_type_id, brand_id, model_number, full_name, unit_of_measure, default_rate, specifications, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
     [ctx.tenantId, categoryId, productTypeId, brandId, model, fn, 'Nos', rate, '{}', true]
   );
-  return result.rows[0];
+  return { ...result.rows[0], created: true };
 }
 
 async function ensureClient(ctx, name, location = '') {
@@ -526,12 +539,22 @@ router.post(
             continue;
           }
 
+          // Category column is the column just before the brand column
+          const categoryColIdx = bomCols.brand > 0 ? bomCols.brand - 1 : 0;
+          let currentCategoryName = null;
+
           // Aggregate BOM items
           const bomAgg = {};
           for (let i = bomHeaderIdx + 1; i < sheetRows.length; i++) {
             const row = sheetRows[i];
             if (!row) continue;
-            
+
+            // Detect category marker: column before brand has a meaningful value
+            const catCandidate = normalizeText(row[categoryColIdx]);
+            if (catCandidate && isMeaningfulValue(catCandidate)) {
+              currentCategoryName = catCandidate;
+            }
+
             const brand = normalizeText(row[bomCols.brand]);
             const product = normalizeText(row[bomCols.product]);
             const model = normalizeText(row[bomCols.model]);
@@ -554,7 +577,8 @@ router.post(
                 model: modelNum,
                 qty: 0,
                 rate,
-                status: siteStatus
+                status: siteStatus,
+                categoryName: currentCategoryName || 'Legacy Imported',
               };
             }
             bomAgg[key].qty += 1;
@@ -587,14 +611,18 @@ router.post(
 
           // Process BOM items
           for (const entry of Object.values(bomAgg)) {
+            // Use per-entry category instead of defaultCategory
+            const category = await ensureCategory(req.ctx, entry.categoryName, 999);
+            if (category.created) summary.categoriesCreated++;
+
             const brand = await ensureBrand(req.ctx, entry.brand);
             if (brand.created) summary.brandsCreated++;
 
-            const productType = await ensureProductType(req.ctx, defaultCategory.id, entry.product);
+            const productType = await ensureProductType(req.ctx, category.id, entry.product);
             if (productType.created) summary.productTypesCreated++;
 
             const fullName = `${brand.name} ${productType.name} ${entry.model}`.trim();
-            const item = await ensureItem(req.ctx, defaultCategory.id, productType.id, brand.id, entry.model, fullName, entry.rate);
+            const item = await ensureItem(req.ctx, category.id, productType.id, brand.id, entry.model, fullName, entry.rate);
             if (item.created) summary.itemsCreated++;
 
             await ensureBomItem(req.ctx, project.id, item.id, entry.qty, entry.rate, entry.status);
