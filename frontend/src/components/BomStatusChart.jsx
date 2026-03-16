@@ -23,7 +23,7 @@ const PROBLEM_STATES = {
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s.key, i]));
 
 // ── Single item progress row ──────────────────────────────────────────────────
-function ItemProgressRow({ item }) {
+export function ItemProgressRow({ item }) {
   const theme = useTheme();
   const currentIdx = STAGE_INDEX[item.status] ?? -1;
   const isProblem   = item.status in PROBLEM_STATES;

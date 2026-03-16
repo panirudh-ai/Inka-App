@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { G8 } from "../theme";
 import AppToast from '../components/AppToast'
 import StatusTag from '../components/StatusTag'
 import {
@@ -52,7 +53,7 @@ import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import HierarchySelector from "../components/HierarchySelector";
 import KpiCard from "../components/KpiCard";
-import BomStatusChart from "../components/BomStatusChart";
+import BomStatusChart, { ItemProgressRow } from "../components/BomStatusChart";
 import { api } from "../api/client";
 
 export default function AdminView() {
@@ -791,9 +792,9 @@ export default function AdminView() {
         {viewMode !== "dashboard" && (
         <Grid container spacing={2.2}>
           <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Total Projects" value={projectPagination.total || projects.length} subtitle="Portfolio visibility" /></Grid>
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Open CRs" value={openCrCount} subtitle="Single CR governance" color="#dc2626" /></Grid>
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Categories" value={categories.length} subtitle="Structured scope hierarchy" color="#2563eb" /></Grid>
-          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Item Master" value={items.length} subtitle="Model-level control" color="#f97316" /></Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Open CRs" value={openCrCount} subtitle="Single CR governance" color={G8.orange} /></Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Categories" value={categories.length} subtitle="Structured scope hierarchy" color={G8.orange} /></Grid>
+          <Grid size={{ xs: 12, sm: 6, lg: 3 }}><KpiCard title="Item Master" value={items.length} subtitle="Model-level control" color={G8.orange} /></Grid>
         </Grid>
         )}
 
@@ -1264,11 +1265,11 @@ export default function AdminView() {
               {/* Summary metric cards */}
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, px: 2.5, py: 2, borderBottom: "1px solid", borderColor: "divider" }}>
                 {[
-                  { label: "Change Request", value: adminOpenCr ? "Open" : "Clear", sub: adminOpenCr ? "Pending approval" : "All approved", color: adminOpenCr ? "#f97316" : "#22c55e" },
-                  { label: "Total Scope", value: `₹${Number(selectedProjectDashboard.summary?.total_scope_value || 0).toLocaleString()}`, sub: "Approved BOM value", color: "#6366f1" },
-                  { label: "Delivered", value: `₹${Number(selectedProjectDashboard.summary?.total_delivered_value || 0).toLocaleString()}`, sub: "Value on-site", color: "#8b5cf6" },
-                  { label: "Balance", value: `₹${Number(selectedProjectDashboard.summary?.total_balance_value || 0).toLocaleString()}`, sub: "Remaining value", color: "#ec4899" },
-                  { label: "Site Visits", value: Number(selectedProjectDashboard.summary?.visit_count || 0), sub: "Total logged", color: "#06b6d4" },
+                  { label: "Change Request", value: adminOpenCr ? "Open" : "Clear", sub: adminOpenCr ? "Pending approval" : "All approved", color: G8.orange },
+                  { label: "Total Scope", value: `₹${Number(selectedProjectDashboard.summary?.total_scope_value || 0).toLocaleString()}`, sub: "Approved BOM value", color: G8.orange },
+                  { label: "Delivered", value: `₹${Number(selectedProjectDashboard.summary?.total_delivered_value || 0).toLocaleString()}`, sub: "Value on-site", color: G8.orange },
+                  { label: "Balance", value: `₹${Number(selectedProjectDashboard.summary?.total_balance_value || 0).toLocaleString()}`, sub: "Remaining value", color: G8.orange },
+                  { label: "Site Visits", value: Number(selectedProjectDashboard.summary?.visit_count || 0), sub: "Total logged", color: G8.orange },
                 ].map(({ label, value, sub, color }) => (
                   <Box key={label} sx={{ flex: "1 1 140px", minWidth: 130, p: 1.8, borderRadius: 2, border: "1px solid", borderColor: "divider", borderLeft: `3px solid ${color}`, bgcolor: "background.paper" }}>
                     <Typography sx={{ fontSize: "0.62rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "text.secondary", mb: 0.4 }}>{label}</Typography>
@@ -1279,7 +1280,6 @@ export default function AdminView() {
               </Box>
 
               <Box sx={{ px: 2.5, pb: 2.5 }}>
-              <BomStatusChart bom={selectedProjectDashboard.bom || []} />
 
               {projectDetailsLoading ? (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Loading project details...</Typography>
@@ -1343,7 +1343,7 @@ export default function AdminView() {
                   {/* Project Contacts */}
                   <Divider sx={{ my: 2 }} />
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#6366f1" }} />
+                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: G8.orange }} />
                     <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Project Contacts</Typography>
                   </Box>
                   <Stack spacing={0.8} sx={{ mt: 0.8 }}>
@@ -1365,7 +1365,7 @@ export default function AdminView() {
                   {/* Log Site Visit */}
                   <Divider sx={{ my: 2 }} />
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#22c55e" }} />
+                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: G8.orange }} />
                     <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Log Site Visit</Typography>
                   </Box>
                   <TextField
@@ -1381,7 +1381,7 @@ export default function AdminView() {
                   <Stack spacing={0.8} sx={{ mt: 1.2 }}>
                     {adminVisits.slice(0, 5).map((v) => (
                       <Box key={v.id} sx={{ display: "flex", gap: 1.2, alignItems: "flex-start" }}>
-                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#06b6d4", mt: "5px", flexShrink: 0 }} />
+                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: G8.orange, mt: "5px", flexShrink: 0 }} />
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 500, lineHeight: 1.3 }}>{v.notes || "Site visit logged"}</Typography>
                           <Typography variant="caption" color="text.secondary">{new Date(v.created_at).toLocaleString()} · {v.engineer_name || "Engineer"}</Typography>
@@ -1393,15 +1393,15 @@ export default function AdminView() {
                   {/* Visit Analytics */}
                   <Divider sx={{ my: 2 }} />
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#06b6d4" }} />
+                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: G8.orange }} />
                     <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Visit Analytics</Typography>
                   </Box>
                   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mb: 2 }}>
                     {[
-                      { label: "Total Visits", value: Number(selectedProjectVisitSummary?.totals?.total_visits || 0), color: "#6366f1" },
-                      { label: "Engineers", value: Number(selectedProjectVisitSummary?.totals?.engineer_count || 0), color: "#06b6d4" },
-                      { label: "First Visit", value: selectedProjectVisitSummary?.totals?.first_visit_date || "—", color: "#8b5cf6" },
-                      { label: "Last Visit", value: selectedProjectVisitSummary?.totals?.last_visit_date || "—", color: "#ec4899" },
+                      { label: "Total Visits", value: Number(selectedProjectVisitSummary?.totals?.total_visits || 0), color: G8.orange },
+                      { label: "Engineers", value: Number(selectedProjectVisitSummary?.totals?.engineer_count || 0), color: G8.orange },
+                      { label: "First Visit", value: selectedProjectVisitSummary?.totals?.first_visit_date || "—", color: G8.orange },
+                      { label: "Last Visit", value: selectedProjectVisitSummary?.totals?.last_visit_date || "—", color: G8.orange },
                     ].map(({ label, value, color }) => (
                       <Box key={label} sx={{ flex: "1 1 120px", minWidth: 110, p: 1.8, borderRadius: 2, border: "1px solid", borderColor: "divider", borderTop: `3px solid ${color}`, textAlign: "center" }}>
                         <Typography sx={{ fontSize: "1.3rem", fontWeight: 800, color, lineHeight: 1.2 }}>{value}</Typography>
@@ -1420,10 +1420,10 @@ export default function AdminView() {
                               <Box key={r.engineer_id || r.engineer_name}>
                                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.3 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 500 }}>{r.engineer_name}</Typography>
-                                  <Typography variant="body2" sx={{ fontWeight: 700, color: "#6366f1" }}>{r.visit_count}</Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 700, color: G8.orange }}>{r.visit_count}</Typography>
                                 </Stack>
                                 <Box sx={{ height: 6, borderRadius: 3, bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)", overflow: "hidden" }}>
-                                  <Box sx={{ height: "100%", width: `${(r.visit_count / maxV) * 100}%`, bgcolor: "#6366f1", borderRadius: 3, transition: "width 0.5s ease" }} />
+                                  <Box sx={{ height: "100%", width: `${(r.visit_count / maxV) * 100}%`, bgcolor: G8.orange, borderRadius: 3, transition: "width 0.5s ease" }} />
                                 </Box>
                               </Box>
                             );
@@ -1441,10 +1441,10 @@ export default function AdminView() {
                               <Box key={r.month_key}>
                                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.3 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 500 }}>{r.month_key}</Typography>
-                                  <Typography variant="body2" sx={{ fontWeight: 700, color: "#06b6d4" }}>{r.visit_count}</Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 700, color: G8.orange }}>{r.visit_count}</Typography>
                                 </Stack>
                                 <Box sx={{ height: 6, borderRadius: 3, bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)", overflow: "hidden" }}>
-                                  <Box sx={{ height: "100%", width: `${(r.visit_count / maxV) * 100}%`, bgcolor: "#06b6d4", borderRadius: 3, transition: "width 0.5s ease" }} />
+                                  <Box sx={{ height: "100%", width: `${(r.visit_count / maxV) * 100}%`, bgcolor: G8.orange, borderRadius: 3, transition: "width 0.5s ease" }} />
                                 </Box>
                               </Box>
                             );
@@ -1457,12 +1457,12 @@ export default function AdminView() {
                   {/* Activity Feed */}
                   <Divider sx={{ my: 2 }} />
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: "#8b5cf6" }} />
+                    <Box sx={{ width: 4, height: 20, borderRadius: 2, bgcolor: G8.orange }} />
                     <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem" }}>Activity Feed</Typography>
                   </Box>
                   <Stack spacing={0}>
                     {selectedProjectActivity.slice(0, 10).map((a, idx) => {
-                      const actionColor = a.action_type?.includes("STATUS") ? "#3b82f6" : a.action_type?.includes("DELIVERY") ? "#22c55e" : a.action_type?.includes("CR") ? "#f97316" : "#8b5cf6";
+                      const actionColor = G8.orange;
                       return (
                         <Box key={a.id} sx={{ display: "flex", gap: 1.5, position: "relative" }}>
                           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
@@ -1526,21 +1526,10 @@ export default function AdminView() {
                                   <Chip label={`Approved ${r.quantity}`} size="small" color="primary" />
                                   <Chip label={`Delivered ${r.delivered_quantity}`} size="small" color="success" />
                                   <Chip label={`Balance ${Number(r.quantity) - Number(r.delivered_quantity)}`} size="small" color="warning" />
-                                  <Chip
-                                    label={r.status}
-                                    size="small"
-                                    color={
-                                      r.status === "Installed - Working" ? "success"
-                                      : r.status === "Installed - To Activate" ? "info"
-                                      : r.status === "Installed - Not Working" ? "error"
-                                      : r.status === "Wiring Done" || r.status === "Wiring Checked OK" ? "info"
-                                      : r.status === "Wiring Rework Required" || r.status === "Provision Not Provided" || r.status === "Position To Be Changed" ? "error"
-                                      : r.status === "Piping Done" || r.status === "Position Marked" ? "secondary"
-                                      : "default"
-                                    }
-                                    variant="outlined"
-                                  />
                                 </Stack>
+                                <Box sx={{ mt: 1.5 }}>
+                                  <ItemProgressRow item={r} />
+                                </Box>
                               </Paper>
                             </Grid>
                           ))}
