@@ -81,6 +81,11 @@ router.get(
       extraWhere += ` AND p.status = $${baseValues.length}`;
     }
 
+    if (req.query.search && req.query.search.trim()) {
+      baseValues.push(`%${req.query.search.trim().toLowerCase()}%`);
+      extraWhere += ` AND (LOWER(p.name) LIKE $${baseValues.length} OR LOWER(COALESCE(p.client_name, '')) LIKE $${baseValues.length})`;
+    }
+
     const countResult = await pool.query(
       `SELECT COUNT(*)::int AS total
        FROM projects p

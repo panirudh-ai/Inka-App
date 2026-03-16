@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { G8 } from "../theme";
 import AppToast from '../components/AppToast'
 import {
   Alert,
   Accordion,
+  Autocomplete,
   AccordionDetails,
   AccordionSummary,
   Box,
@@ -73,6 +74,11 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     isActive: true,
   });
   const [editClientMaster, setEditClientMaster] = useState({});
+  const [reportSearch, setReportSearch] = useState("");
+  const [reportOptions, setReportOptions] = useState([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportPage, setReportPage] = useState(1);
+  const [selectedReportProject, setSelectedReportProject] = useState(null);
   const [projectId, setProjectId] = useState("");
   const [openCreateProject, setOpenCreateProject] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -160,6 +166,22 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     [dashboard?.bom, selectedDeliveryItemId]
   );
 
+  const reportSearchTimerRef = useRef(null);
+  function fetchReportOptions(query) {
+    clearTimeout(reportSearchTimerRef.current);
+    reportSearchTimerRef.current = setTimeout(async () => {
+      setReportLoading(true);
+      try {
+        const params = { limit: 20 };
+        if (query) params.search = query;
+        const res = await api.get("/projects", { params });
+        setReportOptions(Array.isArray(res.data) ? res.data : res.data.data || []);
+      } finally {
+        setReportLoading(false);
+      }
+    }, 300);
+  }
+
   async function fetchProjects() {
     const params = { paginated: true, page: projectPage, limit: PAGE_SIZE };
     if (statusFilter) params.status = statusFilter;
@@ -219,6 +241,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     fetchProjects().catch(() => { });
   }, [projectPage, statusFilter]);
 
+
   useEffect(() => {
     fetchClientMasters().catch(() => { });
   }, [clientPage]);
@@ -231,6 +254,9 @@ export default function ProjectManagerView({ masterData, role = "project_manager
     if (selectedModel) setRate(Number(selectedModel.default_rate || 0));
   }, [selectedModel]);
 
+  const reportPageSize = 10;
+  const reportTotalPages = Math.max(1, Math.ceil(reportOptions.length / reportPageSize));
+  const pagedReportRows = reportOptions.slice((reportPage - 1) * reportPageSize, reportPage * reportPageSize);
 
   useEffect(() => {
     const match = window.location.pathname.match(/\/project\/([^/]+)\/dashboard/);
@@ -1341,29 +1367,30 @@ export default function ProjectManagerView({ masterData, role = "project_manager
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
             Select a project to download its PDF report.
           </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }}>
-            <FormControl size="small" sx={{ minWidth: 280 }}>
-              <InputLabel>Project</InputLabel>
-              <Select
-                label="Project"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-              >
-                {projects.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>{p.name} — {p.client_name || "No client"}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
+            <Autocomplete
+              size="small"
+              sx={{ minWidth: 320 }}
+              options={reportOptions}
+              loading={reportLoading}
+              value={selectedReportProject}
+              onChange={(_, newVal) => { setSelectedReportProject(newVal); setReportPage(1); }}
+              onOpen={() => { if (!reportOptions.length) fetchReportOptions(""); }}
+              onInputChange={(_, val) => { setReportSearch(val); fetchReportOptions(val); setReportPage(1); }}
+              getOptionLabel={(p) => p ? `${p.name} — ${p.client_name || "No client"}` : ""}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
+              renderInput={(params) => <TextField {...params} label="Search & select project" />}
+            />
             <Button
               variant="contained"
-              disabled={!projectId}
+              disabled={!selectedReportProject}
               onClick={async () => {
-                if (!projectId) return;
-                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
+                if (!selectedReportProject) return;
+                const res = await api.get(`/projects/${selectedReportProject.id}/report.pdf`, { responseType: "blob" });
                 const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `inka_report_${projectId}.pdf`;
+                a.download = `inka_report_${selectedReportProject.id}.pdf`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}
@@ -1371,45 +1398,55 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               Download PDF Report
             </Button>
           </Stack>
-          {projects.length > 0 && (
-            <TableContainer sx={{ mt: 2 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Project</TableCell>
-                    <TableCell>Client</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Download</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {projects.map((p) => (
-                    <TableRow key={p.id} hover>
-                      <TableCell>{p.name}</TableCell>
-                      <TableCell>{p.client_name || "-"}</TableCell>
-                      <TableCell><Chip label={p.status} size="small" /></TableCell>
-                      <TableCell>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={async () => {
-                            const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
-                            const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = `inka_report_${p.id}.pdf`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          }}
-                        >
-                          PDF
-                        </Button>
-                      </TableCell>
+          {reportOptions.length > 0 && (
+            <>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, mb: 1 }} flexWrap="wrap" useFlexGap>
+                <Button size="small" disabled={reportPage <= 1} onClick={() => setReportPage((p) => Math.max(1, p - 1))}>Prev</Button>
+                <Typography variant="caption" color="text.secondary">Page {reportPage} / {reportTotalPages}</Typography>
+                <Button size="small" disabled={reportPage >= reportTotalPages} onClick={() => setReportPage((p) => Math.min(reportTotalPages, p + 1))}>Next</Button>
+              </Stack>
+              <TableContainer sx={{ mt: 1 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Project</TableCell>
+                      <TableCell>Client</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Download</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {pagedReportRows.map((p) => (
+                      <TableRow key={p.id} hover>
+                        <TableCell>{p.name}</TableCell>
+                        <TableCell>{p.client_name || "-"}</TableCell>
+                        <TableCell><Chip label={p.status} size="small" /></TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={async () => {
+                              const res = await api.get(`/projects/${p.id}/report.pdf`, { responseType: "blob" });
+                              const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `inka_report_${p.id}.pdf`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                          >
+                            PDF
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                Showing {Math.min(reportPageSize, reportOptions.length - (reportPage - 1) * reportPageSize)} of {reportOptions.length} projects{reportSearch ? ` matching "${reportSearch}"` : ""}.
+              </Typography>
+            </>
           )}
         </Paper>
       )}

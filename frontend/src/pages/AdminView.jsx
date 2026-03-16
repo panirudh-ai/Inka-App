@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { G8 } from "../theme";
 import AppToast from '../components/AppToast'
 import StatusTag from '../components/StatusTag'
 import {
   Accordion,
+  Autocomplete,
   AccordionDetails,
   AccordionSummary,
   Alert,
@@ -71,6 +72,10 @@ export default function AdminView() {
   const [clientSearch, setClientSearch] = useState("");
   const [userSearch, setUserSearch] = useState("");
   const [reportSearch, setReportSearch] = useState("");
+  const [reportOptions, setReportOptions] = useState([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportPage, setReportPage] = useState(1);
+  const [selectedReportProject, setSelectedReportProject] = useState(null);
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -194,6 +199,22 @@ export default function AdminView() {
     categorySequenceMode: false,
   });
 
+  const reportSearchTimerRef = useRef(null);
+  function fetchReportOptions(query) {
+    clearTimeout(reportSearchTimerRef.current);
+    reportSearchTimerRef.current = setTimeout(async () => {
+      setReportLoading(true);
+      try {
+        const params = { limit: 20 };
+        if (query) params.search = query;
+        const res = await api.get("/projects", { params });
+        setReportOptions(Array.isArray(res.data) ? res.data : res.data.data || []);
+      } finally {
+        setReportLoading(false);
+      }
+    }, 300);
+  }
+
   async function loadAll() {
     const [p, c, pt, b, i, u, a, cl, eng, cliUsers] = await Promise.all([
       api.get("/projects", { params: { paginated: true, page: projectPage, limit: PAGE_SIZE, ...(statusFilter ? { status: statusFilter } : {}) } }),
@@ -285,6 +306,7 @@ export default function AdminView() {
     loadAll().catch(() => setNotice("Failed to load admin data"));
   }, [projectPage, userPage, clientPage, statusFilter]);
 
+
   useEffect(() => {
     function onPop() { setViewMode("list"); }
     window.addEventListener("popstate", onPop);
@@ -367,11 +389,9 @@ export default function AdminView() {
     return users.filter((u) => (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q) || (u.role || "").toLowerCase().includes(q));
   }, [users, userSearch]);
 
-  const filteredReports = useMemo(() => {
-    if (!reportSearch) return projects;
-    const q = reportSearch.toLowerCase();
-    return projects.filter((p) => (p.name || "").toLowerCase().includes(q) || (p.client_name || "").toLowerCase().includes(q));
-  }, [projects, reportSearch]);
+  const reportPageSize = 10;
+  const reportTotalPages = Math.max(1, Math.ceil(reportOptions.length / reportPageSize));
+  const pagedReportRows = reportOptions.slice((reportPage - 1) * reportPageSize, reportPage * reportPageSize);
 
   const filteredCategories = useMemo(() => {
     if (!catSearch) return categories;
@@ -2320,29 +2340,29 @@ export default function AdminView() {
               Select a project to download its PDF report.
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
-              <TextField size="small" label="Search projects" value={reportSearch} onChange={(e) => setReportSearch(e.target.value)} sx={{ minWidth: 220 }} />
-              <FormControl size="small" sx={{ minWidth: 280 }}>
-                <InputLabel>Project</InputLabel>
-                <Select
-                  label="Project"
-                  value={selectedProjectId}
-                  onChange={(e) => setSelectedProjectId(e.target.value)}
-                >
-                  {filteredReports.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>{p.name} — {p.client_name || "No client"}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                size="small"
+                sx={{ minWidth: 320 }}
+                options={reportOptions}
+                loading={reportLoading}
+                value={selectedReportProject}
+                onChange={(_, newVal) => { setSelectedReportProject(newVal); setReportPage(1); }}
+                onOpen={() => { if (!reportOptions.length) fetchReportOptions(""); }}
+                onInputChange={(_, val) => { setReportSearch(val); fetchReportOptions(val); setReportPage(1); }}
+                getOptionLabel={(p) => p ? `${p.name} — ${p.client_name || "No client"}` : ""}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                renderInput={(params) => <TextField {...params} label="Search & select project" />}
+              />
               <Button
                 variant="contained"
-                disabled={!selectedProjectId}
+                disabled={!selectedReportProject}
                 onClick={async () => {
-                  if (!selectedProjectId) return;
-                  const res = await api.get(`/projects/${selectedProjectId}/report.pdf`, { responseType: "blob" });
+                  if (!selectedReportProject) return;
+                  const res = await api.get(`/projects/${selectedReportProject.id}/report.pdf`, { responseType: "blob" });
                   const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `inka_report_${selectedProjectId}.pdf`;
+                  a.download = `inka_report_${selectedReportProject.id}.pdf`;
                   a.click();
                   URL.revokeObjectURL(url);
                 }}
@@ -2350,8 +2370,14 @@ export default function AdminView() {
                 Download PDF Report
               </Button>
             </Stack>
-            {filteredReports.length > 0 && (
-              <TableContainer className="admin-table-scroll" sx={{ mt: 2 }}>
+            {reportOptions.length > 0 && (
+              <>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, mb: 1 }} flexWrap="wrap" useFlexGap>
+                <Button size="small" disabled={reportPage <= 1} onClick={() => setReportPage((p) => Math.max(1, p - 1))}>Prev</Button>
+                <Typography variant="caption" color="text.secondary">Page {reportPage} / {reportTotalPages}</Typography>
+                <Button size="small" disabled={reportPage >= reportTotalPages} onClick={() => setReportPage((p) => Math.min(reportTotalPages, p + 1))}>Next</Button>
+              </Stack>
+              <TableContainer className="admin-table-scroll">
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -2363,7 +2389,7 @@ export default function AdminView() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredReports.map((p) => (
+                    {pagedReportRows.map((p) => (
                       <TableRow key={p.id} hover>
                         <TableCell>{p.name}</TableCell>
                         <TableCell>{p.client_name || "-"}</TableCell>
@@ -2391,9 +2417,10 @@ export default function AdminView() {
                   </TableBody>
                 </Table>
               </TableContainer>
+              </>
             )}
             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-              Showing {projects.length} of {projectPagination.total} projects on current page.
+              Showing {Math.min(reportPageSize, reportOptions.length - (reportPage - 1) * reportPageSize)} of {reportOptions.length} projects{reportSearch ? ` matching "${reportSearch}"` : ""}.
             </Typography>
           </Paper>
         )}
