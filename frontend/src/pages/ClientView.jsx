@@ -71,11 +71,11 @@ export default function ClientView() {
               sx={{ width: { xs: "100%", sm: "auto" } }}
               onClick={async () => {
                 if (!projectId) return;
-                const res = await api.get(`/projects/${projectId}/report.xlsx`, { responseType: "blob" });
-                const url = URL.createObjectURL(new Blob([res.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+                const res = await api.get(`/projects/${projectId}/report.pdf`, { responseType: "blob" });
+                const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `inka_report_${projectId}.xlsx`;
+                a.download = `inka_report_${projectId}.pdf`;
                 a.click();
                 URL.revokeObjectURL(url);
               }}

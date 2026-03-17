@@ -307,6 +307,14 @@ export default function AdminView() {
     loadAll().catch(() => setNotice("Failed to load admin data"));
   }, [projectPage, userPage, clientPage, statusFilter]);
 
+  // Auto-convert notice string → adminToast popup
+  useEffect(() => {
+    if (!notice) return;
+    const isError = /fail|error|invalid/i.test(notice);
+    setAdminToast({ open: true, severity: isError ? "error" : "success", text: notice });
+    setNotice("");
+  }, [notice]);
+
 
   useEffect(() => {
     function onPop() { setViewMode("list"); }
@@ -546,6 +554,7 @@ export default function AdminView() {
       })),
     });
     setAdminToast({ open: true, severity: "success", text: "Contacts updated" });
+    await loadProjectDetails(selectedProjectId);
   }
 
   async function createCategory() {
@@ -613,40 +622,48 @@ export default function AdminView() {
 
   async function toggleCategory(c) {
     await api.patch(`/admin/categories/${c.id}`, { isActive: !c.is_active });
+    setNotice(`Category ${!c.is_active ? "activated" : "deactivated"}`);
     await loadAll();
   }
   async function toggleProductType(pt) {
     await api.patch(`/admin/product-types/${pt.id}`, { isActive: !pt.is_active });
+    setNotice(`Product type ${!pt.is_active ? "activated" : "deactivated"}`);
     await loadAll();
   }
   async function toggleBrand(b) {
     await api.patch(`/admin/brands/${b.id}`, { isActive: !b.is_active });
+    setNotice(`Brand ${!b.is_active ? "activated" : "deactivated"}`);
     await loadAll();
   }
   async function toggleItem(i) {
     await api.patch(`/admin/items/${i.id}`, { isActive: !i.is_active });
+    setNotice(`Item ${!i.is_active ? "activated" : "deactivated"}`);
     await loadAll();
   }
 
   async function saveCategory(id) {
     await api.patch(`/admin/categories/${id}`, editCategory[id] || {});
     setEditCategory((prev) => ({ ...prev, [id]: undefined }));
+    setNotice("Category saved");
     await loadAll();
   }
   async function saveProductType(id) {
     await api.patch(`/admin/product-types/${id}`, editProductType[id] || {});
     setEditProductType((prev) => ({ ...prev, [id]: undefined }));
     setEditingProductTypeId(null);
+    setNotice("Product type saved");
     await loadAll();
   }
   async function saveBrand(id) {
     await api.patch(`/admin/brands/${id}`, editBrand[id] || {});
     setEditBrand((prev) => ({ ...prev, [id]: undefined }));
+    setNotice("Brand saved");
     await loadAll();
   }
   async function saveItem(id) {
     await api.patch(`/admin/items/${id}`, editItem[id] || {});
     setEditItem((prev) => ({ ...prev, [id]: undefined }));
+    setNotice("Item saved");
     await loadAll();
   }
   async function deleteCategory(id) {
@@ -848,7 +865,7 @@ export default function AdminView() {
         </Paper>
         )}
 
-        {notice ? <Alert sx={{ mt: 1.5 }} severity="info">{notice}</Alert> : null}
+
 
         {tab === 0 && (
           <>
@@ -1773,7 +1790,6 @@ export default function AdminView() {
               </DialogActions>
             </Dialog>
 
-            <AppToast toast={adminToast} onClose={() => setAdminToast((p) => ({ ...p, open: false }))} />
             </>
           )}
           </>
@@ -2279,6 +2295,7 @@ export default function AdminView() {
                             onChange={async (e) => {
                               try {
                                 await api.patch(`/admin/users/${u.id}`, { role: e.target.value });
+                                setNotice("User role updated");
                                 await loadAll();
                               } catch {
                                 setNotice("Role update failed");
@@ -2296,6 +2313,7 @@ export default function AdminView() {
                             onChange={async () => {
                               try {
                                 await api.patch(`/admin/users/${u.id}`, { isActive: !u.is_active });
+                                setNotice(`User ${!u.is_active ? "activated" : "deactivated"}`);
                                 await loadAll();
                               } catch {
                                 setNotice("Status update failed");
@@ -2630,6 +2648,7 @@ export default function AdminView() {
         </DialogActions>
       </Dialog>
 
+      <AppToast toast={adminToast} onClose={() => setAdminToast((p) => ({ ...p, open: false }))} />
       </Box>
     </Fade>
   );

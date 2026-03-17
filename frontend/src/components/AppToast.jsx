@@ -24,7 +24,7 @@ export default function AppToast({ toast, onClose }) {
   if (!toast.open) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-[2000] min-w-[280px] max-w-sm">
+    <div className="fixed top-4 right-4 z-[2000] min-w-[280px] max-w-sm">
       <div
         className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur-sm transition-all duration-300 ${severityStyles[toast.severity] || severityStyles.info}`}
       >
