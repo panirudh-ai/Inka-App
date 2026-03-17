@@ -134,54 +134,125 @@ export function ItemProgressRow({ item }) {
   );
 }
 
-// ── Pipeline summary bar ──────────────────────────────────────────────────────
-function PipelineSummary({ bom }) {
-  const theme = useTheme();
+// ── BOM Status Summary — donut chart + status cards ──────────────────────────
+export function PipelineSummary({ bom }) {
   const total = bom.length;
 
-  const stageCounts = useMemo(() => {
+  const segments = useMemo(() => {
     const counts = {};
     for (const item of bom) counts[item.status] = (counts[item.status] || 0) + 1;
-    return counts;
-  }, [bom]);
 
-  // All stages including problem states for the summary
-  const allStages = [
-    ...STAGES,
-    ...Object.entries(PROBLEM_STATES).map(([key, val]) => ({ key, ...val })),
-  ].filter(({ key }) => stageCounts[key]);
+    const allStages = [
+      ...STAGES,
+      ...Object.entries(PROBLEM_STATES).map(([key, val]) => ({ key, ...val })),
+    ].filter(({ key }) => counts[key]);
+
+    const R = 38;
+    const circ = 2 * Math.PI * R;
+    let cum = 0;
+    return allStages.map(({ key, label, color }) => {
+      const count = counts[key];
+      const segLen = (count / total) * circ;
+      const seg = { key, label, color, count, segLen, offset: cum, circ, R };
+      cum += segLen;
+      return seg;
+    });
+  }, [bom, total]);
+
+  if (!total) return null;
+
+  const installed   = bom.filter((b) => b.status === "Installed - Working").length;
+  const problems    = bom.filter((b) => b.status in PROBLEM_STATES).length;
+  const notStarted  = bom.filter((b) => b.status === "Work Yet to Start").length;
+  const inProgress  = total - installed - problems - notStarted;
+
+  const summaryStats = [
+    { label: "Done",        value: installed,  color: "#22c55e" },
+    { label: "In Progress", value: inProgress, color: "#3b82f6" },
+    { label: "Issues",      value: problems,   color: "#ef4444" },
+    { label: "Not Started", value: notStarted, color: "#9e9e9e" },
+  ].filter((s) => s.value > 0);
+
+  const R = 38;
+  const CX = 55;
+  const CY = 55;
 
   return (
-    <Box sx={{ mb: 2 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.8, display: "block" }}>
-        Pipeline Overview — {total} item{total !== 1 ? "s" : ""}
-      </Typography>
-      {/* Stacked progress bar */}
-      <Box sx={{ display: "flex", height: 20, borderRadius: 2, overflow: "hidden", width: "100%" }}>
-        {allStages.map(({ key, color }) => {
-          const count = stageCounts[key] || 0;
-          if (!count) return null;
-          const pct = (count / total) * 100;
-          return (
-            <Tooltip key={key} title={`${key}: ${count}`} placement="top" arrow>
-              <Box sx={{ width: `${pct}%`, bgcolor: color, transition: "width 0.4s" }} />
-            </Tooltip>
-          );
-        })}
-      </Box>
-      {/* Legend */}
-      <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} sx={{ mt: 0.8 }}>
-        {allStages.map(({ key, label, color }) => {
-          const count = stageCounts[key] || 0;
-          return (
-            <Stack key={key} direction="row" alignItems="center" spacing={0.4}>
-              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: color, flexShrink: 0 }} />
-              <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary" }}>
-                {label || key} ({count})
+    <Box>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>BOM Status Overview</Typography>
+        <Typography variant="caption" color="text.secondary">{total} item{total !== 1 ? "s" : ""} total</Typography>
+      </Stack>
+
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={3} alignItems={{ sm: "center" }}>
+        {/* SVG Donut */}
+        <Box sx={{ position: "relative", flexShrink: 0, width: 110, height: 110 }}>
+          <svg width="110" height="110" viewBox="0 0 110 110" style={{ transform: "rotate(-90deg)" }}>
+            {/* Background ring */}
+            <circle cx={CX} cy={CY} r={R} fill="none" stroke="#e5e7eb" strokeWidth="13" />
+            {segments.map((s) => (
+              <Tooltip key={s.key} title={`${s.key}: ${s.count}`} placement="top" arrow>
+                <circle
+                  cx={CX} cy={CY} r={R}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth="13"
+                  strokeDasharray={`${s.segLen} ${s.circ - s.segLen}`}
+                  strokeDashoffset={-s.offset}
+                  style={{ transition: "stroke-dasharray 0.6s ease" }}
+                />
+              </Tooltip>
+            ))}
+          </svg>
+          {/* Center label */}
+          <Box sx={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <Typography sx={{ fontWeight: 800, fontSize: "1.3rem", lineHeight: 1 }}>{total}</Typography>
+            <Typography variant="caption" sx={{ fontSize: 9, color: "text.secondary", letterSpacing: 0.5 }}>ITEMS</Typography>
+          </Box>
+        </Box>
+
+        {/* Quick stats row */}
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ flex: 1 }}>
+          {summaryStats.map((s) => (
+            <Box
+              key={s.label}
+              sx={{
+                display: "flex", flexDirection: "column", alignItems: "center",
+                px: 1.8, py: 1.2, borderRadius: 2.5,
+                bgcolor: `${s.color}12`,
+                border: `1.5px solid ${s.color}40`,
+                minWidth: 68,
+              }}
+            >
+              <Typography sx={{ fontWeight: 800, fontSize: "1.5rem", color: s.color, lineHeight: 1 }}>{s.value}</Typography>
+              <Typography variant="caption" sx={{ fontSize: 10, color: "text.secondary", mt: 0.3 }}>{s.label}</Typography>
+              <Typography variant="caption" sx={{ fontSize: 9, color: s.color, fontWeight: 600 }}>
+                {Math.round((s.value / total) * 100)}%
               </Typography>
+            </Box>
+          ))}
+        </Stack>
+      </Stack>
+
+      {/* Per-status chips row */}
+      <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.8} sx={{ mt: 2 }}>
+        {segments.map((s) => (
+          <Tooltip key={s.key} title={s.key} arrow>
+            <Stack
+              direction="row" alignItems="center" spacing={0.6}
+              sx={{
+                px: 1.2, py: 0.5, borderRadius: 10,
+                bgcolor: `${s.color}15`,
+                border: `1px solid ${s.color}35`,
+                cursor: "default",
+              }}
+            >
+              <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: s.color, flexShrink: 0 }} />
+              <Typography sx={{ fontSize: 11, fontWeight: 600, color: "text.primary" }}>{s.label}</Typography>
+              <Typography sx={{ fontSize: 11, fontWeight: 800, color: s.color }}>{s.count}</Typography>
             </Stack>
-          );
-        })}
+          </Tooltip>
+        ))}
       </Stack>
     </Box>
   );

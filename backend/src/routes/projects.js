@@ -538,7 +538,14 @@ router.put(
         actionType: "PROJECT_CONTACTS_UPDATED",
         entityType: "project",
         entityId: req.params.projectId,
-        metadata: { count: listed.rowCount },
+        metadata: {
+          count: listed.rowCount,
+          contacts: payload.contacts.map((c) => ({
+            role: c.roleName || "",
+            name: c.contactName || "",
+            phone: c.phone || "",
+          })),
+        },
       });
       return listed.rows;
     });

@@ -54,7 +54,7 @@ import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import HierarchySelector from "../components/HierarchySelector";
 import KpiCard from "../components/KpiCard";
-import BomStatusChart, { ItemProgressRow } from "../components/BomStatusChart";
+import BomStatusChart, { ItemProgressRow, PipelineSummary } from "../components/BomStatusChart";
 import { api } from "../api/client";
 
 export default function AdminView() {
@@ -89,6 +89,7 @@ export default function AdminView() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [selectedProjectDashboard, setSelectedProjectDashboard] = useState(null);
   const [selectedProjectActivity, setSelectedProjectActivity] = useState([]);
+  const [expandedActivity, setExpandedActivity] = useState(null);
   const [selectedProjectVisitSummary, setSelectedProjectVisitSummary] = useState({
     totals: {},
     byEngineer: [],
@@ -1380,12 +1381,12 @@ export default function AdminView() {
                         <TextField size="small" label="Name" value={c.contactName || c.contact_name || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, contactName: e.target.value } : x))} />
                         <TextField size="small" label="Phone" value={c.phone || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, phone: e.target.value } : x))} />
                         <TextField size="small" label="Email" value={c.email || ""} onChange={(e) => setAdminProjectContacts((prev) => prev.map((x, i) => i === idx ? { ...x, email: e.target.value } : x))} />
+                        <Tooltip title="Save contacts"><IconButton size="small" color="success" onClick={() => adminSaveContacts().catch(() => setAdminToast({ open: true, severity: "error", text: "Save contacts failed" }))}><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
                         <Tooltip title="Remove contact"><IconButton size="small" color="error" onClick={() => setAdminProjectContacts((prev) => prev.filter((_, i) => i !== idx))}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip>
                       </Stack>
                     ))}
                     <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
                       <Button size="small" variant="outlined" onClick={() => setAdminProjectContacts((prev) => [...prev, { roleName: "Civil Engineer", contactName: "", phone: "", email: "", notes: "" }])}>Add Contact</Button>
-                      <Button size="small" variant="contained" startIcon={<CheckCircleOutlineIcon />} onClick={() => adminSaveContacts().catch(() => setAdminToast({ open: true, severity: "error", text: "Save contacts failed" }))} sx={{ bgcolor: G8.orange, "&:hover": { bgcolor: "#c44a3c" } }}>Save Contacts</Button>
                     </Stack>
                   </Stack>
 
@@ -1427,8 +1428,8 @@ export default function AdminView() {
                     {[
                       { label: "Total Visits", value: Number(selectedProjectVisitSummary?.totals?.total_visits || 0), color: G8.orange },
                       { label: "Engineers", value: Number(selectedProjectVisitSummary?.totals?.engineer_count || 0), color: G8.orange },
-                      { label: "First Visit", value: selectedProjectVisitSummary?.totals?.first_visit_date || "—", color: G8.orange },
-                      { label: "Last Visit", value: selectedProjectVisitSummary?.totals?.last_visit_date || "—", color: G8.orange },
+                      { label: "First Visit", value: selectedProjectVisitSummary?.totals?.first_visit_date ? new Date(selectedProjectVisitSummary.totals.first_visit_date).toLocaleDateString() : "—", color: G8.orange },
+                      { label: "Last Visit", value: selectedProjectVisitSummary?.totals?.last_visit_date ? new Date(selectedProjectVisitSummary.totals.last_visit_date).toLocaleDateString() : "—", color: G8.orange },
                     ].map(({ label, value, color }) => (
                       <Box key={label} sx={{ flex: "1 1 120px", minWidth: 110, p: 1.8, borderRadius: 2, border: "1px solid", borderColor: "divider", borderTop: `3px solid ${color}`, textAlign: "center" }}>
                         <Typography sx={{ fontSize: "1.3rem", fontWeight: 800, color, lineHeight: 1.2 }}>{value}</Typography>
@@ -1490,15 +1491,36 @@ export default function AdminView() {
                   <Stack spacing={0}>
                     {selectedProjectActivity.slice(0, 10).map((a, idx) => {
                       const actionColor = G8.orange;
+                      const meta = a.metadata_json || {};
+                      const hasDetail = a.action_type === "PROJECT_CONTACTS_UPDATED" && Array.isArray(meta.contacts) && meta.contacts.length > 0;
+                      const isExpanded = expandedActivity === a.id;
                       return (
                         <Box key={a.id} sx={{ display: "flex", gap: 1.5, position: "relative" }}>
                           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
                             <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: actionColor, mt: "4px", zIndex: 1, flexShrink: 0 }} />
                             {idx < Math.min(selectedProjectActivity.length, 10) - 1 && <Box sx={{ width: 2, flex: 1, bgcolor: (t) => t.palette.mode === "dark" ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)", my: 0.3 }} />}
                           </Box>
-                          <Box sx={{ pb: 1.5 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: actionColor, fontSize: "0.8rem" }}>{a.action_type?.replace(/_/g, " ")}</Typography>
+                          <Box sx={{ pb: 1.5, flex: 1 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                              <Typography variant="body2" sx={{ fontWeight: 600, color: actionColor, fontSize: "0.8rem" }}>{a.action_type?.replace(/_/g, " ")}</Typography>
+                              {hasDetail && (
+                                <IconButton size="small" onClick={() => setExpandedActivity(isExpanded ? null : a.id)} sx={{ p: 0.2 }}>
+                                  <ExpandMoreIcon fontSize="small" sx={{ fontSize: "1rem", transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+                                </IconButton>
+                              )}
+                            </Box>
                             <Typography variant="caption" color="text.secondary">{new Date(a.created_at).toLocaleString()}{a.user_name ? ` · ${a.user_name}` : ""}</Typography>
+                            {hasDetail && (
+                              <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                <Box sx={{ mt: 0.8, pl: 1, borderLeft: `2px solid ${actionColor}` }}>
+                                  {meta.contacts.map((c, i) => (
+                                    <Typography key={i} variant="caption" display="block" color="text.secondary">
+                                      {c.role && <strong>{c.role}</strong>}{c.role && c.name ? " — " : ""}{c.name}{c.phone ? ` · ${c.phone}` : ""}
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              </Collapse>
+                            )}
                           </Box>
                         </Box>
                       );
@@ -1532,6 +1554,11 @@ export default function AdminView() {
                       Add Item via CR
                     </Button>
                   </Stack>
+                  {(selectedProjectDashboard?.bom?.length > 0) && (
+                    <Paper sx={{ p: 2, mb: 2, border: "1px solid", borderColor: "divider" }}>
+                      <PipelineSummary bom={selectedProjectDashboard.bom} />
+                    </Paper>
+                  )}
                   {adminGrouped.map(([category, rows]) => (
                     <Accordion key={category} sx={{ mb: 1 }} defaultExpanded>
                       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -2509,69 +2536,86 @@ export default function AdminView() {
           </Paper>
         )}
 
-      <Dialog open={editProjectOpen} onClose={() => setEditProjectOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>Edit Project</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={1.2} sx={{ mt: 0.2 }}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField label="Project Name" size="small" fullWidth value={editProjectForm.name} onChange={(e) => setEditProjectForm((p) => ({ ...p, name: e.target.value }))} />
+      <Dialog open={editProjectOpen} onClose={() => setEditProjectOpen(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ pb: 1, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ width: 4, height: 28, borderRadius: 2, bgcolor: G8.orange, flexShrink: 0 }} />
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>Edit Project</Typography>
+              <Typography variant="caption" color="text.secondary">Update project details and assignments</Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2.5, pb: 1 }}>
+          <Stack spacing={2}>
+            {/* Basic Info */}
+            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: 1 }}>Basic Info</Typography>
+            <Grid container spacing={1.5}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField label="Project Name" size="small" fullWidth value={editProjectForm.name} onChange={(e) => setEditProjectForm((p) => ({ ...p, name: e.target.value }))} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Client</InputLabel>
+                  <Select
+                    label="Client"
+                    value={editProjectForm.clientId}
+                    onChange={(e) => {
+                      const selected = clients.find((c) => c.id === e.target.value);
+                      setEditProjectForm((p) => ({
+                        ...p,
+                        clientId: e.target.value,
+                        clientName: selected?.name || "",
+                        location: selected?.location || p.location,
+                      }));
+                    }}
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {clients.filter((c) => c.is_active).map((c) => (
+                      <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField label="Location" size="small" fullWidth value={editProjectForm.location} onChange={(e) => setEditProjectForm((p) => ({ ...p, location: e.target.value }))} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField label="Start Date" type="date" size="small" fullWidth slotProps={{ inputLabel: { shrink: true } }} value={editProjectForm.startDate} onChange={(e) => setEditProjectForm((p) => ({ ...p, startDate: e.target.value }))} />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <TextField label="Drive Link (Optional)" size="small" fullWidth value={editProjectForm.driveLink} onChange={(e) => setEditProjectForm((p) => ({ ...p, driveLink: e.target.value }))} />
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Client</InputLabel>
-                <Select
-                  label="Client"
-                  value={editProjectForm.clientId}
-                  onChange={(e) => {
-                    const selected = clients.find((c) => c.id === e.target.value);
-                    setEditProjectForm((p) => ({
-                      ...p,
-                      clientId: e.target.value,
-                      clientName: selected?.name || "",
-                      location: selected?.location || p.location,
-                    }));
-                  }}
-                >
-                  <MenuItem value="">None</MenuItem>
-                  {clients.filter((c) => c.is_active).map((c) => (
-                    <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+            <Divider />
+            {/* Assignments */}
+            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700, letterSpacing: 1 }}>Assignments & Config</Typography>
+            <Grid container spacing={1.5}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Assigned Engineers</InputLabel>
+                  <Select multiple label="Assigned Engineers" value={editProjectForm.engineerIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, engineerIds: e.target.value }))}>
+                    {engineers.map((u) => (
+                      <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Category Sequence Mode</InputLabel>
+                  <Select label="Category Sequence Mode" value={editProjectForm.categorySequenceMode ? "yes" : "no"} onChange={(e) => setEditProjectForm((p) => ({ ...p, categorySequenceMode: e.target.value === "yes" }))}>
+                    <MenuItem value="no">Disabled</MenuItem>
+                    <MenuItem value="yes">Enabled</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField label="Location" size="small" fullWidth value={editProjectForm.location} onChange={(e) => setEditProjectForm((p) => ({ ...p, location: e.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField label="Drive Link (Optional)" size="small" fullWidth value={editProjectForm.driveLink} onChange={(e) => setEditProjectForm((p) => ({ ...p, driveLink: e.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField label="Start Date" type="date" size="small" fullWidth slotProps={{ inputLabel: { shrink: true } }} value={editProjectForm.startDate} onChange={(e) => setEditProjectForm((p) => ({ ...p, startDate: e.target.value }))} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Assigned Engineers</InputLabel>
-                <Select multiple label="Assigned Engineers" value={editProjectForm.engineerIds} onChange={(e) => setEditProjectForm((p) => ({ ...p, engineerIds: e.target.value }))}>
-                  {engineers.map((u) => (
-                    <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Category Sequence Mode</InputLabel>
-                <Select label="Category Sequence Mode" value={editProjectForm.categorySequenceMode ? "yes" : "no"} onChange={(e) => setEditProjectForm((p) => ({ ...p, categorySequenceMode: e.target.value === "yes" }))}>
-                  <MenuItem value="no">Disabled</MenuItem>
-                  <MenuItem value="yes">Enabled</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditProjectOpen(false)} startIcon={<HighlightOffIcon />}>Cancel</Button>
-          <Button variant="contained" color="success" startIcon={<CheckCircleOutlineIcon />} onClick={() => saveAdminEditProject().catch(() => setNotice("Update project failed"))}>Save</Button>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider", gap: 1 }}>
+          <Button onClick={() => setEditProjectOpen(false)} startIcon={<HighlightOffIcon />} sx={{ color: "text.secondary" }}>Cancel</Button>
+          <Button variant="contained" startIcon={<CheckCircleOutlineIcon />} onClick={() => saveAdminEditProject().catch(() => setNotice("Update project failed"))} sx={{ bgcolor: G8.orange, "&:hover": { bgcolor: "#c44a3c" }, borderRadius: 2, px: 3 }}>Save Changes</Button>
         </DialogActions>
       </Dialog>
 
