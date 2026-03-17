@@ -1385,7 +1385,7 @@ export default function AdminView() {
                     ))}
                     <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
                       <Button size="small" variant="outlined" onClick={() => setAdminProjectContacts((prev) => [...prev, { roleName: "Civil Engineer", contactName: "", phone: "", email: "", notes: "" }])}>Add Contact</Button>
-                      <Tooltip title="Save contacts"><IconButton color="success" onClick={() => adminSaveContacts().catch(() => setAdminToast({ open: true, severity: "error", text: "Save contacts failed" }))} sx={{ borderRadius: 1.5 }}><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                      <Button size="small" variant="contained" startIcon={<CheckCircleOutlineIcon />} onClick={() => adminSaveContacts().catch(() => setAdminToast({ open: true, severity: "error", text: "Save contacts failed" }))} sx={{ bgcolor: G8.orange, "&:hover": { bgcolor: "#c44a3c" } }}>Save Contacts</Button>
                     </Stack>
                   </Stack>
 

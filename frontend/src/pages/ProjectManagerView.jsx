@@ -1044,7 +1044,7 @@ export default function ProjectManagerView({ masterData, role = "project_manager
               ))}
               <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
                 <Button size="small" variant="outlined" onClick={() => setProjectContacts((prev) => [...prev, { roleName: "Civil Engineer", contactName: "", phone: "", email: "", notes: "" }])}>Add Contact</Button>
-                <Tooltip title="Save contacts"><IconButton color="success" onClick={saveContacts} sx={{ borderRadius: 1.5 }}><CheckCircleOutlineIcon fontSize="small" /></IconButton></Tooltip>
+                <Button size="small" variant="contained" startIcon={<CheckCircleOutlineIcon />} onClick={saveContacts} sx={{ bgcolor: G8.orange, "&:hover": { bgcolor: "#c44a3c" } }}>Save Contacts</Button>
               </Stack>
             </Stack>
             <Divider sx={{ my: 2 }} />
