@@ -124,7 +124,16 @@ router.patch(
     );
     if (!current.rowCount) return res.status(404).json({ error: "Category not found" });
 
-    const params = [payload.name ?? null, payload.sequenceOrder ?? null, payload.isActive ?? null, req.params.id];
+    const params = [req.params.id, req.ctx.tenantId];
+    const set = [];
+    const add = (col, val) => { set.push(`${col} = $${params.length + 1}`); params.push(val); };
+
+    if (payload.name !== undefined)          add("name",           payload.name.trim());
+    if (payload.sequenceOrder !== undefined) add("sequence_order", payload.sequenceOrder);
+    if (payload.isActive !== undefined)      add("is_active",      payload.isActive);
+    if (!set.length) return res.status(400).json({ error: "No fields to update" });
+    set.push("row_version = row_version + 1");
+
     let versionWhere = "";
     if (payload.rowVersion) {
       params.push(payload.rowVersion);
@@ -132,11 +141,8 @@ router.patch(
     }
     const { rows } = await pool.query(
       `UPDATE categories
-       SET name = COALESCE($1, name),
-           sequence_order = COALESCE($2, sequence_order),
-           is_active = COALESCE($3, is_active),
-           row_version = row_version + 1
-       WHERE id = $4
+       SET ${set.join(", ")}
+       WHERE id = $1 AND tenant_id = $2
        ${versionWhere}
        RETURNING id, name, sequence_order, is_active`,
       params
@@ -219,22 +225,25 @@ router.patch(
       }),
       req.body
     );
+    const params = [req.params.id, req.ctx.tenantId];
+    const set = [];
+    const add = (col, val) => { set.push(`${col} = $${params.length + 1}`); params.push(val); };
+
+    if (payload.name !== undefined)     add("name",      payload.name.trim());
+    if (payload.role !== undefined)     add("role",      payload.role);
+    if (payload.isActive !== undefined) add("is_active", payload.isActive);
+    if (payload.password !== undefined) {
+      set.push(`password_hash = crypt($${params.length + 1}, gen_salt('bf'))`);
+      params.push(payload.password);
+    }
+    if (!set.length) return res.status(400).json({ error: "No fields to update" });
+
     const { rows } = await pool.query(
       `UPDATE users
-       SET name = COALESCE($1, name),
-           role = COALESCE($2, role),
-           is_active = COALESCE($3, is_active),
-           password_hash = CASE WHEN $4::text IS NULL THEN password_hash ELSE crypt($4, gen_salt('bf')) END
-       WHERE id = $5 AND tenant_id = $6
+       SET ${set.join(", ")}
+       WHERE id = $1 AND tenant_id = $2
        RETURNING id, name, email, role, is_active, created_at`,
-      [
-        payload.name ?? null,
-        payload.role ?? null,
-        payload.isActive ?? null,
-        payload.password ?? null,
-        req.params.id,
-        req.ctx.tenantId,
-      ]
+      params
     );
     if (!rows.length) return res.status(404).json({ error: "User not found" });
     res.json(rows[0]);
@@ -350,7 +359,16 @@ router.patch(
       if (!cat.rowCount) return res.status(404).json({ error: "Category not found" });
     }
 
-    const params = [payload.name ?? null, payload.categoryId ?? null, payload.isActive ?? null, req.params.id];
+    const params = [req.params.id, req.ctx.tenantId];
+    const set = [];
+    const add = (col, val) => { set.push(`${col} = $${params.length + 1}`); params.push(val); };
+
+    if (payload.name !== undefined)       add("name",        payload.name.trim());
+    if (payload.categoryId !== undefined) add("category_id", payload.categoryId);
+    if (payload.isActive !== undefined)   add("is_active",   payload.isActive);
+    if (!set.length) return res.status(400).json({ error: "No fields to update" });
+    set.push("row_version = row_version + 1");
+
     let versionWhere = "";
     if (payload.rowVersion) {
       params.push(payload.rowVersion);
@@ -358,11 +376,8 @@ router.patch(
     }
     const { rows } = await pool.query(
       `UPDATE product_types
-       SET name = COALESCE($1, name),
-           category_id = COALESCE($2, category_id),
-           is_active = COALESCE($3, is_active),
-           row_version = row_version + 1
-       WHERE id = $4
+       SET ${set.join(", ")}
+       WHERE id = $1 AND tenant_id = $2
        ${versionWhere}
        RETURNING id, category_id, name, is_active`,
       params
@@ -454,7 +469,15 @@ router.patch(
     );
     if (!current.rowCount) return res.status(404).json({ error: "Brand not found" });
 
-    const params = [payload.name ?? null, payload.isActive ?? null, req.params.id];
+    const params = [req.params.id, req.ctx.tenantId];
+    const set = [];
+    const add = (col, val) => { set.push(`${col} = $${params.length + 1}`); params.push(val); };
+
+    if (payload.name !== undefined)     add("name",      payload.name.trim());
+    if (payload.isActive !== undefined) add("is_active", payload.isActive);
+    if (!set.length) return res.status(400).json({ error: "No fields to update" });
+    set.push("row_version = row_version + 1");
+
     let versionWhere = "";
     if (payload.rowVersion) {
       params.push(payload.rowVersion);
@@ -462,10 +485,8 @@ router.patch(
     }
     const { rows } = await pool.query(
       `UPDATE brands
-       SET name = COALESCE($1, name),
-           is_active = COALESCE($2, is_active),
-           row_version = row_version + 1
-       WHERE id = $3
+       SET ${set.join(", ")}
+       WHERE id = $1 AND tenant_id = $2
        ${versionWhere}
        RETURNING id, name, is_active`,
       params
