@@ -656,18 +656,21 @@ router.patch(
       if (!br.rowCount) return res.status(404).json({ error: "Brand not found" });
     }
 
-    const params = [
-      payload.categoryId ?? null,
-      payload.productTypeId ?? null,
-      payload.brandId ?? null,
-      payload.modelNumber ?? null,
-      payload.fullName ?? null,
-      payload.unitOfMeasure ?? null,
-      payload.defaultRate ?? null,
-      payload.specifications ?? null,
-      payload.isActive ?? null,
-      req.params.id,
-    ];
+    const params = [req.params.id];
+    const set = [];
+    const add = (col, val) => { set.push(`${col} = $${params.length + 1}`); params.push(val); };
+
+    if (payload.categoryId !== undefined)    add("category_id",      payload.categoryId ?? null);
+    if (payload.productTypeId !== undefined) add("product_type_id",  payload.productTypeId ?? null);
+    if (payload.brandId !== undefined)       add("brand_id",         payload.brandId ?? null);
+    if (payload.modelNumber !== undefined)   add("model_number",     payload.modelNumber);
+    if (payload.fullName !== undefined)      add("full_name",        payload.fullName);
+    if (payload.unitOfMeasure !== undefined) add("unit_of_measure",  payload.unitOfMeasure?.trim() || null);
+    if (payload.defaultRate !== undefined)   add("default_rate",     payload.defaultRate ?? null);
+    if (payload.specifications !== undefined)add("specifications",   payload.specifications ?? null);
+    if (payload.isActive !== undefined)      add("is_active",        payload.isActive);
+    set.push("row_version = row_version + 1");
+
     let versionWhere = "";
     if (payload.rowVersion) {
       params.push(payload.rowVersion);
@@ -675,17 +678,8 @@ router.patch(
     }
     const { rows } = await pool.query(
       `UPDATE items
-       SET category_id = COALESCE($1, category_id),
-           product_type_id = COALESCE($2, product_type_id),
-           brand_id = COALESCE($3, brand_id),
-           model_number = COALESCE($4, model_number),
-           full_name = COALESCE($5, full_name),
-           unit_of_measure = COALESCE($6, unit_of_measure),
-           default_rate = COALESCE($7, default_rate),
-           specifications = COALESCE($8, specifications),
-           is_active = COALESCE($9, is_active),
-           row_version = row_version + 1
-       WHERE id = $10
+       SET ${set.join(", ")}
+       WHERE id = $1
        ${versionWhere}
        RETURNING id, category_id, product_type_id, brand_id, model_number, full_name, unit_of_measure, default_rate, specifications, is_active`,
       params

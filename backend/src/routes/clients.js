@@ -106,17 +106,27 @@ router.patch(
       req.body
     );
 
-    const params = [
-      payload.name?.trim() || null,
-      payload.location === undefined ? null : (payload.location?.trim() || null),
-      payload.primaryContactName === undefined ? null : (payload.primaryContactName?.trim() || null),
-      payload.primaryContactPhone === undefined ? null : (payload.primaryContactPhone?.trim() || null),
-      payload.primaryContactEmail === undefined ? null : (payload.primaryContactEmail?.trim() || null),
-      payload.notes === undefined ? null : (payload.notes?.trim() || null),
-      payload.isActive ?? null,
-      req.params.clientId,
-      req.ctx.tenantId,
-    ];
+    // Build SET clause dynamically so that explicitly-cleared fields (empty string → null)
+    // are actually written as NULL rather than silently kept by COALESCE.
+    const params = [req.params.clientId, req.ctx.tenantId];
+    const set = [];
+
+    const addField = (col, val) => {
+      set.push(`${col} = $${params.length + 1}`);
+      params.push(val);
+    };
+
+    if (payload.name !== undefined)               addField("name",                  payload.name.trim());
+    if (payload.location !== undefined)           addField("location",              payload.location?.trim() || null);
+    if (payload.primaryContactName !== undefined) addField("primary_contact_name",  payload.primaryContactName?.trim() || null);
+    if (payload.primaryContactPhone !== undefined)addField("primary_contact_phone", payload.primaryContactPhone?.trim() || null);
+    if (payload.primaryContactEmail !== undefined)addField("primary_contact_email", payload.primaryContactEmail?.trim() || null);
+    if (payload.notes !== undefined)              addField("notes",                 payload.notes?.trim() || null);
+    if (payload.isActive !== undefined)           addField("is_active",             payload.isActive);
+
+    if (!set.length) return res.status(400).json({ error: "No fields to update" });
+
+    set.push("row_version = row_version + 1");
 
     let versionWhere = "";
     if (payload.rowVersion) {
@@ -126,15 +136,8 @@ router.patch(
 
     const { rows } = await pool.query(
       `UPDATE clients
-       SET name = COALESCE($1, name),
-           location = COALESCE($2, location),
-           primary_contact_name = COALESCE($3, primary_contact_name),
-           primary_contact_phone = COALESCE($4, primary_contact_phone),
-           primary_contact_email = COALESCE($5, primary_contact_email),
-           notes = COALESCE($6, notes),
-           is_active = COALESCE($7, is_active),
-           row_version = row_version + 1
-       WHERE id = $8 AND tenant_id = $9
+       SET ${set.join(", ")}
+       WHERE id = $1 AND tenant_id = $2
        ${versionWhere}
        RETURNING id, name, location, primary_contact_name, primary_contact_phone, primary_contact_email, notes, is_active, row_version, created_at`,
       params

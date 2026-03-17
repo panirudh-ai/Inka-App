@@ -191,7 +191,15 @@ router.patch(
         [adjustedDelivered, req.ctx.userId, cur.bom_id]
       );
 
-      const params = [payload.quantity ?? null, payload.notes ?? null, payload.photoUrl ?? null, req.params.deliveryId];
+      const params = [req.params.deliveryId];
+      const set = [];
+      const add = (col, val) => { set.push(`${col} = $${params.length + 1}`); params.push(val); };
+
+      if (payload.quantity !== undefined) add("quantity",  payload.quantity);
+      if (payload.notes !== undefined)    add("notes",     payload.notes?.trim() || null);
+      if (payload.photoUrl !== undefined) add("photo_url", payload.photoUrl ?? null);
+      set.push("row_version = row_version + 1");
+
       let versionWhere = "";
       if (payload.rowVersion) {
         params.push(payload.rowVersion);
@@ -199,11 +207,8 @@ router.patch(
       }
       const { rows } = await client.query(
         `UPDATE deliveries
-         SET quantity = COALESCE($1, quantity),
-             notes = COALESCE($2, notes),
-             photo_url = COALESCE($3, photo_url),
-             row_version = row_version + 1
-         WHERE id = $4
+         SET ${set.join(", ")}
+         WHERE id = $1
          ${versionWhere}
          RETURNING *`,
         params

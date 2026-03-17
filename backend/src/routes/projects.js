@@ -372,18 +372,20 @@ router.patch(
         }
         if (!resolvedClientName) resolvedClientName = c.rows[0].name;
       }
-      const params = [
-        payload.name ?? null,
-        resolvedClientName,
-        payload.location ?? null,
-        payload.driveLink === undefined ? null : (payload.driveLink ? payload.driveLink.trim() : null),
-        payload.startDate === undefined ? null : payload.startDate,
-        payload.categorySequenceMode ?? null,
-        payload.status ?? null,
-        payload.clientId ?? null,
-        req.params.projectId,
-        req.ctx.tenantId,
-      ];
+      const params = [req.params.projectId, req.ctx.tenantId];
+      const set = [];
+      const add = (col, val) => { set.push(`${col} = $${params.length + 1}`); params.push(val); };
+
+      if (payload.name !== undefined)                 add("name", payload.name);
+      if (resolvedClientName !== null || payload.clientName !== undefined) add("client_name", resolvedClientName);
+      if (payload.clientId !== undefined)             add("client_id", payload.clientId ?? null);
+      if (payload.location !== undefined)             add("location", payload.location?.trim() || null);
+      if (payload.driveLink !== undefined)            add("drive_link", payload.driveLink ? payload.driveLink.trim() : null);
+      if (payload.startDate !== undefined)            add("start_date", payload.startDate ?? null);
+      if (payload.categorySequenceMode !== undefined) add("category_sequence_mode", payload.categorySequenceMode);
+      if (payload.status !== undefined)               add("status", payload.status);
+      set.push("row_version = row_version + 1");
+
       let whereVersion = "";
       if (payload.rowVersion) {
         params.push(payload.rowVersion);
@@ -391,16 +393,8 @@ router.patch(
       }
       const { rows } = await client.query(
         `UPDATE projects
-         SET name = COALESCE($1, name),
-             client_name = COALESCE($2, client_name),
-             location = COALESCE($3, location),
-             drive_link = COALESCE($4, drive_link),
-             start_date = COALESCE($5, start_date),
-             category_sequence_mode = COALESCE($6, category_sequence_mode),
-             status = COALESCE($7, status),
-             client_id = COALESCE($8, client_id),
-             row_version = row_version + 1
-         WHERE id = $9 AND tenant_id = $10
+         SET ${set.join(", ")}
+         WHERE id = $1 AND tenant_id = $2
          ${whereVersion}
          RETURNING *`,
         params
